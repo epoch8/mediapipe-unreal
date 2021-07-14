@@ -37,6 +37,9 @@ public:
 				message_type = pk.GetTypeId();
 
 				callback->OnUmpPacket(this);
+
+				raw_data = nullptr;
+				message_type = 0;
 			}
 
 			return absl::OkStatus();

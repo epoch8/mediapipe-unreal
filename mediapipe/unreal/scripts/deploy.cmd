@@ -52,10 +52,10 @@ xcopy /Y /E "mediapipe\unreal\graphs" "%DEPLOY_ROOT%\mediapipe\unreal\"
 
 :: UE4
 
-xcopy /Y /E "bazel-bin\mediapipe\unreal\mediapipe" "%UNREAL_PLUGIN_DIR%\MPData\mediapipe\"
+md "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64"
+copy /Y "%DEPLOY_ROOT%\ump_shared.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
+copy /Y "%DEPLOY_ROOT%\opencv_world3410.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
 copy /Y "mediapipe\unreal\ump_api.h" "%UNREAL_PLUGIN_DIR%\Source\MediaPipe\Private\"
-copy /Y "%DEPLOY_ROOT%\ump_shared.dll" "%UNREAL_PLUGIN_DIR%\Binaries\Win64\"
-copy /Y "%DEPLOY_ROOT%\ump_shared.pdb" "%UNREAL_PLUGIN_DIR%\Binaries\Win64\"
-copy /Y "%DEPLOY_ROOT%\opencv_world3410.dll" "%UNREAL_PLUGIN_DIR%\Binaries\Win64\"
+xcopy /Y /E "bazel-bin\mediapipe\unreal\mediapipe" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Data\mediapipe\"
 
 cd "%INITIAL_DIR%"

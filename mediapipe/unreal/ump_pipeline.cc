@@ -50,7 +50,7 @@ IUmpObserver* UmpPipeline::CreateObserver(const char* stream_name)
 	log_i(strf("CreateObserver: %s", stream_name));
 	if (run_flag)
 	{
-		log_e("Unable to create observer while pipeline running");
+		log_e("Invalid state: pipeline running");
 		return nullptr;
 	}
 	auto* observer = new UmpObserver(stream_name);
@@ -105,8 +105,7 @@ void UmpPipeline::WorkerThread()
 		auto status = this->RunImpl();
 		if (!status.ok())
 		{
-			std::string msg(status.message());
-			log_e(msg.c_str());
+			log_e(std::string(status.message()));
 		}
 	}
 	catch (const std::exception& ex)
@@ -151,11 +150,11 @@ absl::Status UmpPipeline::RunImpl()
 	std::string config_str;
 	RET_CHECK_OK(LoadGraphConfig(config_filename, config_str));
 
-	log_d("ParseTextProto");
+	log_i("ParseTextProto");
 	mediapipe::CalculatorGraphConfig config;
 	RET_CHECK(mediapipe::ParseTextProto<mediapipe::CalculatorGraphConfig>(config_str, &config));
 
-	log_d("CalculatorGraph::Initialize");
+	log_i("CalculatorGraph::Initialize");
 	graph.reset(new mediapipe::CalculatorGraph());
 	RET_CHECK_OK(graph->Initialize(config));
 
@@ -175,7 +174,7 @@ absl::Status UmpPipeline::RunImpl()
 	}
 	#endif
 
-	log_d("VideoCapture::open");
+	log_i("VideoCapture::open");
 	cv::VideoCapture capture;
 	capture.open(cam_id, cam_api);
 	RET_CHECK(capture.isOpened());
@@ -197,7 +196,7 @@ absl::Status UmpPipeline::RunImpl()
 	cv::Mat camera_frame_raw;
 	cv::Mat camera_frame;
 
-	log_d("CalculatorGraph::StartRun");
+	log_i("CalculatorGraph::StartRun");
 	RET_CHECK_OK(graph->StartRun({}));
 
 	log_i("MAIN LOOP");
@@ -253,7 +252,7 @@ absl::Status UmpPipeline::RunImpl()
 		}
 	}
 
-	log_d("CalculatorGraph::CloseInputStream");
+	log_i("CalculatorGraph::CloseInputStream");
 	graph->CloseInputStream(kInputStream);
 	graph->WaitUntilDone();
 

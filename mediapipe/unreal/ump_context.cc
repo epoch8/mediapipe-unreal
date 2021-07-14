@@ -3,14 +3,7 @@
 
 ABSL_DECLARE_FLAG(std::string, resource_root_dir);
 
-class UmpStdoutLog : public IUmpLog
-{
-public:
-	void Println(EUmpVerbosity verbosity, const char* msg) const override { std::cout << msg << std::endl; }
-	static IUmpLog* GetInstance() { static UmpStdoutLog log; return &log; }
-};
-
-IUmpLog* _ump_log = UmpStdoutLog::GetInstance();
+IUmpLog* _ump_log = nullptr;
 
 UmpContext::UmpContext() {
 	log_d("+UmpContext");
@@ -34,7 +27,9 @@ IUmpPipeline* UmpContext::CreatePipeline() {
 }
 
 void UmpContext::LogProfilerStats() {
-	log_d(std::string(PROF_SUMMARY).c_str());
+	#if defined(PROF_ENABLE)
+		log_i(std::string(PROF_SUMMARY));
+	#endif
 }
 
 IUmpContext* UmpCreateContext() {

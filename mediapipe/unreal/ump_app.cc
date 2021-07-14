@@ -3,6 +3,12 @@
 
 #define UMP_UNIQ(_type) std::unique_ptr<_type, IUmpObject::Dtor>
 
+class UmpStdoutLog : public IUmpLog
+{
+public:
+	void Println(EUmpVerbosity verbosity, const char* msg) const override { std::cout << msg << std::endl; }
+};
+
 int main(int argc, char* argv[])
 {
 	google::InitGoogleLogging(argv[0]);
@@ -10,7 +16,9 @@ int main(int argc, char* argv[])
 
 	std::cout << "== INIT ==" << std::endl;
 
+	UmpStdoutLog log;
 	UMP_UNIQ(IUmpContext) context(UmpCreateContext());
+	context->SetLog(&log);
 	context->SetResourceDir("");
 
 	UMP_UNIQ(IUmpPipeline) pipe(context->CreatePipeline());
