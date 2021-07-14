@@ -189,8 +189,6 @@ class Packet {
   // Crashes if IsEmpty() == true.
   size_t GetTypeId() const;
 
-  const void * const GetRaw() const; // UMP
-
   // Returns the timestamp.
   class Timestamp Timestamp() const;
 
@@ -376,7 +374,6 @@ class HolderBase {
   virtual const std::string RegisteredTypeName() const = 0;
   // Get the type id of the underlying data type.
   virtual size_t GetTypeId() const = 0;
-  virtual const void * const GetRaw() const = 0; // UMP
   // Downcasts this to Holder<T>.  Returns nullptr if deserialization
   // failed or if the requested type is not what is stored.
   template <typename T>
@@ -512,7 +509,6 @@ class Holder : public HolderBase {
     return *ptr_;
   }
   size_t GetTypeId() const final { return tool::GetTypeHash<T>(); }
-  const void * const GetRaw() const final { return &data(); } // UMP
   // Releases the underlying data pointer and transfers the ownership to a
   // unique pointer.
   // This method is dangerous and is only used by Packet::Consume() if the
@@ -762,8 +758,6 @@ inline size_t Packet::GetTypeId() const {
   CHECK(holder_);
   return holder_->GetTypeId();
 }
-
-inline const void * const Packet::GetRaw() const { return holder_->GetRaw(); } // UMP
 
 template <typename T>
 inline const T& Packet::Get() const {
