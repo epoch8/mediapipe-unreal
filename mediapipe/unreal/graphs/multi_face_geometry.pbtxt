@@ -1,6 +1,6 @@
 
-output_stream: "face_geometry"
-output_stream: "face_geometry_presence"
+output_stream: "multi_face_geometry"
+output_stream: "multi_face_geometry_presence"
 
 node {
   calculator: "FaceGeometryEnvGeneratorCalculator"
@@ -23,12 +23,12 @@ node {
   calculator: "FaceGeometryFromLandmarks"
   input_stream: "IMAGE_SIZE:input_image_size"
   input_side_packet: "ENVIRONMENT:environment"
-  input_stream: "MULTI_FACE_LANDMARKS:face_landmarks"
-  output_stream: "MULTI_FACE_GEOMETRY:face_geometry"
+  input_stream: "MULTI_FACE_LANDMARKS:multi_face_landmarks"
+  output_stream: "MULTI_FACE_GEOMETRY:multi_face_geometry"
 }
 
 node {
   calculator: "PacketPresenceCalculator"
-  input_stream: "PACKET:face_geometry"
-  output_stream: "PRESENCE:face_geometry_presence"
+  input_stream: "PACKET:multi_face_geometry"
+  output_stream: "PRESENCE:multi_face_geometry_presence"
 }

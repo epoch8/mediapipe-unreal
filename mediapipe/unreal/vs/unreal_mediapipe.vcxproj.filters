@@ -12,20 +12,23 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="BUILD" />
-    <None Include="..\graphs\face_landmarks.pbtxt">
+    <None Include="..\BUILD" />
+    <None Include="..\graphs\holistic_landmarks.pbtxt">
       <Filter>graph</Filter>
     </None>
-    <None Include="..\graphs\face_geometry.pbtxt">
+    <None Include="..\graphs\multi_face_geometry.pbtxt">
       <Filter>graph</Filter>
     </None>
-    <None Include="..\graphs\hand_landmarks.pbtxt">
+    <None Include="..\graphs\multi_face_landmarks.pbtxt">
+      <Filter>graph</Filter>
+    </None>
+    <None Include="..\graphs\face_landmarks_with_iris.pbtxt">
+      <Filter>graph</Filter>
+    </None>
+    <None Include="..\graphs\multi_hand_landmarks.pbtxt">
       <Filter>graph</Filter>
     </None>
     <None Include="..\graphs\pose_landmarks.pbtxt">
-      <Filter>graph</Filter>
-    </None>
-    <None Include="..\graphs\holistic_landmarks.pbtxt">
       <Filter>graph</Filter>
     </None>
   </ItemGroup>
@@ -67,6 +70,9 @@
     </ClCompile>
     <ClCompile Include="..\ump_context.cc">
       <Filter>core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ump_generator.cc">
+      <Filter>app</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

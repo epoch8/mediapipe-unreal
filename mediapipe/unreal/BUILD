@@ -33,7 +33,10 @@ cc_library(
 		"//mediapipe/graphs/hand_tracking:desktop_tflite_calculators",
 		"//mediapipe/graphs/pose_tracking:pose_tracking_cpu_deps",
 		"//mediapipe/graphs/holistic_tracking:holistic_tracking_cpu_graph_deps",
-		
+		"//mediapipe/graphs/iris_tracking:iris_tracking_cpu_video_input_deps",
+		"//mediapipe/graphs/iris_tracking:iris_tracking_cpu_deps",
+		"//mediapipe/graphs/iris_tracking:iris_depth_cpu_deps",
+
 		"//mediapipe/calculators/core:mux_calculator",
 
 		"//mediapipe/unreal:headers",

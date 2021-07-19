@@ -23,6 +23,12 @@ copy /Y "mediapipe\modules\face_detection\face_detection_short_range.tflite" "%D
 copy /Y "mediapipe\modules\face_landmark\face_landmark.tflite" "%DEPLOY_ROOT%\mediapipe\modules\face_landmark\"
 copy /Y "bazel-bin\mediapipe\modules\face_geometry\data\geometry_pipeline_metadata_landmarks.binarypb" "%DEPLOY_ROOT%\mediapipe\modules\face_geometry\data\"
 
+:: iris
+
+md "%DEPLOY_ROOT%\mediapipe\modules\iris_landmark"
+
+copy /Y "mediapipe\modules\iris_landmark\iris_landmark.tflite" "%DEPLOY_ROOT%\mediapipe\modules\iris_landmark\"
+
 :: hands
 
 md "%DEPLOY_ROOT%\mediapipe\modules\palm_detection"
@@ -53,6 +59,7 @@ xcopy /Y /E "mediapipe\unreal\graphs" "%DEPLOY_ROOT%\mediapipe\unreal\"
 :: UE4
 
 md "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64"
+copy /Y "%DEPLOY_ROOT%\ump_shared.dll" "%UNREAL_PLUGIN_DIR%\Binaries\Win64\"
 copy /Y "%DEPLOY_ROOT%\ump_shared.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
 copy /Y "%DEPLOY_ROOT%\opencv_world3410.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
 copy /Y "mediapipe\unreal\ump_api.h" "%UNREAL_PLUGIN_DIR%\Source\MediaPipe\Private\"

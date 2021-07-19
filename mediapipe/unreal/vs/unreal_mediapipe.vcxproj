@@ -32,15 +32,17 @@
     <ClCompile Include="..\ump_app.cc" />
     <ClCompile Include="..\ump_context.cc" />
     <ClCompile Include="..\ump_dll.cc" />
+    <ClCompile Include="..\ump_generator.cc" />
     <ClCompile Include="..\ump_pipeline.cc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="BUILD" />
-    <None Include="..\graphs\face_landmarks.pbtxt" />
-    <None Include="..\graphs\face_geometry.pbtxt" />
-    <None Include="..\graphs\hand_landmarks.pbtxt" />
-    <None Include="..\graphs\pose_landmarks.pbtxt" />
+    <None Include="..\BUILD" />
     <None Include="..\graphs\holistic_landmarks.pbtxt" />
+    <None Include="..\graphs\multi_face_geometry.pbtxt" />
+    <None Include="..\graphs\multi_face_landmarks.pbtxt" />
+    <None Include="..\graphs\face_landmarks_with_iris.pbtxt" />
+    <None Include="..\graphs\multi_hand_landmarks.pbtxt" />
+    <None Include="..\graphs\pose_landmarks.pbtxt" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

@@ -11,10 +11,10 @@ public:
 
 int main(int argc, char* argv[])
 {
+	std::cout << "== INIT ==" << std::endl;
+
 	google::InitGoogleLogging(argv[0]);
 	absl::ParseCommandLine(argc, argv);
-
-	std::cout << "== INIT ==" << std::endl;
 
 	UmpStdoutLog log;
 	UMP_UNIQ(IUmpContext) context(UmpCreateContext());
@@ -25,13 +25,24 @@ int main(int argc, char* argv[])
 	pipe->SetCaptureParams(0, cv::CAP_DSHOW, 0, 0, 0); // CAP_MSMF is broken on windows!
 	pipe->SetOverlay(true);
 
-	pipe->SetGraphConfiguration("mediapipe/unreal/holistic_landmarks.pbtxt");
-
 	std::vector<UMP_UNIQ(IUmpObserver)> observers;
+
+	#if 0
+	pipe->SetGraphConfiguration("mediapipe/unreal/holistic_landmarks.pbtxt");
 	observers.emplace_back(pipe->CreateObserver("pose_landmarks"));
 	observers.emplace_back(pipe->CreateObserver("face_landmarks"));
 	observers.emplace_back(pipe->CreateObserver("left_hand_landmarks"));
 	observers.emplace_back(pipe->CreateObserver("right_hand_landmarks"));
+	#else
+	pipe->SetGraphConfiguration("mediapipe/unreal/face_landmarks_with_iris.pbtxt");
+	observers.emplace_back(pipe->CreateObserver("multi_face_landmarks"));
+	observers.emplace_back(pipe->CreateObserver("left_eye_contour_landmarks"));
+	observers.emplace_back(pipe->CreateObserver("left_iris_landmarks"));
+	observers.emplace_back(pipe->CreateObserver("left_eye_rect_from_landmarks"));
+	observers.emplace_back(pipe->CreateObserver("right_eye_contour_landmarks"));
+	observers.emplace_back(pipe->CreateObserver("right_iris_landmarks"));
+	observers.emplace_back(pipe->CreateObserver("right_eye_rect_from_landmarks"));
+	#endif
 
 	pipe->Start();
 	getchar();
