@@ -105,7 +105,8 @@ void UmpPipeline::WorkerThread()
 		auto status = this->RunImpl();
 		if (!status.ok())
 		{
-			log_e(std::string(status.message()));
+			std::string msg(status.message());
+			log_e(msg);
 		}
 	}
 	catch (const std::exception& ex)
@@ -158,10 +159,18 @@ absl::Status UmpPipeline::RunImpl()
 	graph.reset(new mediapipe::CalculatorGraph());
 	RET_CHECK_OK(graph->Initialize(config));
 
-	ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller, graph->AddOutputStreamPoller(kOutputStream));
 	for (auto& iter : observers)
 	{
 		RET_CHECK_OK(iter->ObserveOutputStream(graph.get()));
+	}
+
+	std::unique_ptr<mediapipe::OutputStreamPoller> output_poller;
+	if (overlay)
+	{
+		//ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller, graph->AddOutputStreamPoller(kOutputStream));
+		auto output_poller_sop = graph->AddOutputStreamPoller(kOutputStream);
+		RET_CHECK(output_poller_sop.ok());
+		output_poller = std::make_unique<mediapipe::OutputStreamPoller>(std::move(output_poller_sop.value()));
 	}
 
 	// init opencv
@@ -232,22 +241,23 @@ absl::Status UmpPipeline::RunImpl()
 				.At(mediapipe::Timestamp(frame_timestamp_us))));
 		}
 
-		mediapipe::Packet packet;
-		if (!poller.Next(&packet))
+		if (overlay && output_poller)
 		{
-			log_e("OutputStreamPoller::Next failed");
-			break;
-		}
+			mediapipe::Packet packet;
+			if (!output_poller->Next(&packet))
+			{
+				log_e("OutputStreamPoller::Next failed");
+				break;
+			}
 
-		if (overlay)
-		{
-			PROF_NAMED("draw_overlay");
+			{
+				PROF_NAMED("draw_overlay");
+				auto& output_frame = packet.Get<mediapipe::ImageFrame>();
+				cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
+				cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
+				cv::imshow(kWindowName, output_frame_mat);
+			}
 
-			auto& output_frame = packet.Get<mediapipe::ImageFrame>();
-			cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
-			cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
-
-			cv::imshow(kWindowName, output_frame_mat);
 			cv::waitKey(1); // required for cv::imshow
 		}
 	}
