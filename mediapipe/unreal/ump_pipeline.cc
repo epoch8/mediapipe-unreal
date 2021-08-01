@@ -23,10 +23,16 @@ UmpPipeline::~UmpPipeline()
 	Stop();
 }
 
-void UmpPipeline::SetGraphConfiguration(const char* in_filename)
+void UmpPipeline::SetGraphConfiguration(const char* filename)
 {
-	log_i(strf("SetGraphConfiguration: %s", in_filename));
-	config_filename = in_filename;
+	log_i(strf("SetGraphConfiguration: %s", filename));
+	config_filename = filename;
+}
+
+void UmpPipeline::SetCaptureFromFile(const char* filename)
+{
+	log_i(strf("SetCaptureFromFile: %s", filename));
+	input_filename = filename;
 }
 
 void UmpPipeline::SetCaptureParams(int in_cam_id, int in_cam_api, int in_cam_resx, int in_cam_resy, int in_cam_fps)
@@ -175,27 +181,40 @@ absl::Status UmpPipeline::RunImpl()
 
 	// init opencv
 
-	#if defined(_WIN32)
-	if (cam_api == cv::CAP_ANY)
-	{
-		// CAP_MSMF is broken on windows! use CAP_DSHOW by default, also see: https://github.com/opencv/opencv/issues/17687
-		cam_api = cv::CAP_DSHOW;
-	}
-	#endif
-
 	log_i("VideoCapture::open");
 	cv::VideoCapture capture;
-	capture.open(cam_id, cam_api);
-	RET_CHECK(capture.isOpened());
+	use_camera = input_filename.empty();
 
-	if (cam_resx > 0 && cam_resy > 0)
+	if (use_camera)
 	{
-		capture.set(cv::CAP_PROP_FRAME_WIDTH, cam_resx);
-		capture.set(cv::CAP_PROP_FRAME_HEIGHT, cam_resy);
+		#if defined(_WIN32)
+		if (cam_api == cv::CAP_ANY)
+		{
+			// CAP_MSMF is broken on windows! use CAP_DSHOW by default, also see: https://github.com/opencv/opencv/issues/17687
+			cam_api = cv::CAP_DSHOW;
+		}
+		#endif
+
+		capture.open(cam_id, cam_api);
+	}
+	else
+	{
+		capture.open(*input_filename);
 	}
 
-	if (cam_fps > 0)
-		capture.set(cv::CAP_PROP_FPS, cam_fps);
+	RET_CHECK(capture.isOpened());
+
+	if (use_camera)
+	{
+		if (cam_resx > 0 && cam_resy > 0)
+		{
+			capture.set(cv::CAP_PROP_FRAME_WIDTH, cam_resx);
+			capture.set(cv::CAP_PROP_FRAME_HEIGHT, cam_resy);
+		}
+
+		if (cam_fps > 0)
+			capture.set(cv::CAP_PROP_FPS, cam_fps);
+	}
 
 	if (overlay)
 		cv::namedWindow(kWindowName, cv::WINDOW_AUTOSIZE);
@@ -226,7 +245,8 @@ absl::Status UmpPipeline::RunImpl()
 			const size_t frame_timestamp_us = (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
 
 			cv::cvtColor(camera_frame_raw, camera_frame, cv::COLOR_BGR2RGB);
-			cv::flip(camera_frame, camera_frame, 1);
+			if (use_camera)
+				cv::flip(camera_frame, camera_frame, 1);
 
 			auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
 				mediapipe::ImageFormat::SRGB, camera_frame.cols, camera_frame.rows,
