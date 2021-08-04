@@ -12,6 +12,9 @@
 #include "mediapipe/framework/port/file_helpers.h"
 #include "mediapipe/util/resource_util.h"
 
+#include <chrono>
+#include <thread>
+
 UmpPipeline::UmpPipeline()
 {
 	log_d("+UmpPipeline");
@@ -144,6 +147,11 @@ void UmpPipeline::ShutdownImpl()
 	log_i("UmpPipeline::Shutdown OK");
 }
 
+inline double get_timestamp_us()
+{
+	return (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
+}
+
 absl::Status UmpPipeline::RunImpl()
 {
 	constexpr char kInputStream[] = "input_video";
@@ -216,6 +224,11 @@ absl::Status UmpPipeline::RunImpl()
 			capture.set(cv::CAP_PROP_FPS, cam_fps);
 	}
 
+	const int cap_resx = (int)capture.get(cv::CAP_PROP_FRAME_WIDTH);
+	const int cap_resy = (int)capture.get(cv::CAP_PROP_FRAME_HEIGHT);
+	const double cap_fps = (double)capture.get(cv::CAP_PROP_FPS);
+	log_i(strf("CAPS: w=%d h=%d fps=%f", cap_resx, cap_resy, cap_fps));
+
 	if (overlay)
 		cv::namedWindow(kWindowName, cv::WINDOW_AUTOSIZE);
 
@@ -235,14 +248,18 @@ absl::Status UmpPipeline::RunImpl()
 		{
 			PROF_NAMED("capture_frame");
 			capture >> camera_frame_raw;
-			if (camera_frame_raw.empty())
-				continue;
 		}
+
+		if (!use_camera && camera_frame_raw.empty())
+		{
+			log_i("VideoCapture: EOF");
+			break;
+		}
+
+		const double frame_timestamp_us = get_timestamp_us();
 
 		{
 			PROF_NAMED("process_frame");
-
-			const size_t frame_timestamp_us = (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
 
 			cv::cvtColor(camera_frame_raw, camera_frame, cv::COLOR_BGR2RGB);
 			if (use_camera)
@@ -258,9 +275,10 @@ absl::Status UmpPipeline::RunImpl()
 			RET_CHECK_OK(graph->AddPacketToInputStream(
 				kInputStream,
 				mediapipe::Adopt(input_frame.release())
-				.At(mediapipe::Timestamp(frame_timestamp_us))));
+				.At(mediapipe::Timestamp((size_t)frame_timestamp_us))));
 		}
 
+		// draw overlay
 		if (overlay && output_poller)
 		{
 			mediapipe::Packet packet;
@@ -279,6 +297,21 @@ absl::Status UmpPipeline::RunImpl()
 			}
 
 			cv::waitKey(1); // required for cv::imshow
+		}
+
+		// wait for next frame (when playing from file)
+		if (!use_camera && cap_fps > 0.0)
+		{
+			const double frame_us = (1.0 / cap_fps) * 1e6;
+			for (;;)
+			{
+				const double cur_timestamp_us = get_timestamp_us();
+				const double delta = fabs(cur_timestamp_us - frame_timestamp_us);
+				if (delta >= frame_us)
+					break;
+				else
+					std::this_thread::sleep_for(std::chrono::microseconds((size_t)(frame_us - delta)));
+			}
 		}
 	}
 
