@@ -71,8 +71,5 @@
     <ClCompile Include="..\ump_context.cc">
       <Filter>core</Filter>
     </ClCompile>
-    <ClCompile Include="..\ump_generator.cc">
-      <Filter>app</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

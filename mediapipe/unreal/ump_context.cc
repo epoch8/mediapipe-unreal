@@ -26,12 +26,6 @@ IUmpPipeline* UmpContext::CreatePipeline() {
 	return new UmpPipeline();
 }
 
-void UmpContext::LogProfilerStats() {
-	#if defined(PROF_ENABLE)
-		log_i(std::string(PROF_SUMMARY));
-	#endif
-}
-
 IUmpContext* UmpCreateContext() {
 	return new UmpContext();
 }

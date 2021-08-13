@@ -32,7 +32,6 @@
     <ClCompile Include="..\ump_app.cc" />
     <ClCompile Include="..\ump_context.cc" />
     <ClCompile Include="..\ump_dll.cc" />
-    <ClCompile Include="..\ump_generator.cc" />
     <ClCompile Include="..\ump_pipeline.cc" />
   </ItemGroup>
   <ItemGroup>

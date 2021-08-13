@@ -2,6 +2,7 @@
 
 #include "ump_api.h"
 
+#include <cinttypes>
 #include <cstdlib>
 #include <cstdarg>
 
@@ -42,5 +43,7 @@ inline std::string strf(const char* format, ...)
 	va_end(args);
 	if (n >= 0)
 		buf[n] = 0;
+	else
+		buf[0] = 0;
 	return std::move(std::string(buf));
 }

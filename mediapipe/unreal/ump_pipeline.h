@@ -18,6 +18,10 @@ public:
 	bool Start() override;
 	void Stop() override;
 
+	void LogProfilerStats() override;
+	uint64_t GetLastFrameId() override { return frame_id; }
+	double GetLastFrameTimestamp() override { return frame_ts; }
+
 private:
 	void WorkerThread();
 	void ShutdownImpl();
@@ -44,4 +48,7 @@ private:
 
 	std::unique_ptr<std::thread> worker;
 	std::atomic<bool> run_flag;
+
+	uint64_t frame_id = 0;
+	double frame_ts = 0;
 };

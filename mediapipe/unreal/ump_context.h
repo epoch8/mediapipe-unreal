@@ -13,5 +13,4 @@ public:
 	void SetLog(class IUmpLog* log) override;
 	void SetResourceDir(const char* resource_dir) override;
 	class IUmpPipeline* CreatePipeline() override;
-	void LogProfilerStats() override;
 };

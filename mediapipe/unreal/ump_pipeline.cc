@@ -74,7 +74,9 @@ bool UmpPipeline::Start()
 	try
 	{
 		log_i("UmpPipeline::Start");
-		this->run_flag = true;
+		frame_id = 0;
+		frame_ts = 0;
+		run_flag = true;
 		worker = std::make_unique<std::thread>([this]() { this->WorkerThread(); });
 		log_i("UmpPipeline::Start OK");
 		return true;
@@ -147,7 +149,7 @@ void UmpPipeline::ShutdownImpl()
 	log_i("UmpPipeline::Shutdown OK");
 }
 
-inline double get_timestamp_us()
+inline double get_timestamp_us() // microseconds
 {
 	return (double)cv::getTickCount() / (double)cv::getTickFrequency() * 1e6;
 }
@@ -240,9 +242,15 @@ absl::Status UmpPipeline::RunImpl()
 	log_i("CalculatorGraph::StartRun");
 	RET_CHECK_OK(graph->StartRun({}));
 
+	double t0 = get_timestamp_us();
+
 	log_i("MAIN LOOP");
 	while (run_flag)
 	{
+		double t1 = get_timestamp_us();
+		double dt = t1 - t0;
+		t0 = t1;
+
 		PROF_NAMED("pipeline_tick");
 
 		{
@@ -257,6 +265,7 @@ absl::Status UmpPipeline::RunImpl()
 		}
 
 		const double frame_timestamp_us = get_timestamp_us();
+		frame_ts = frame_timestamp_us;
 
 		{
 			PROF_NAMED("process_frame");
@@ -281,6 +290,8 @@ absl::Status UmpPipeline::RunImpl()
 		// draw overlay
 		if (overlay && output_poller)
 		{
+			PROF_NAMED("draw_overlay");
+
 			mediapipe::Packet packet;
 			if (!output_poller->Next(&packet))
 			{
@@ -288,20 +299,22 @@ absl::Status UmpPipeline::RunImpl()
 				break;
 			}
 
-			{
-				PROF_NAMED("draw_overlay");
-				auto& output_frame = packet.Get<mediapipe::ImageFrame>();
-				cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
-				cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
-				cv::imshow(kWindowName, output_frame_mat);
-			}
+			auto& output_frame = packet.Get<mediapipe::ImageFrame>();
+			cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
 
+			auto stat = strf("%.0f | %.4f | %" PRIu64 "", frame_ts, dt * 0.001, frame_id);
+			cv::putText(output_frame_mat, *stat, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
+
+			cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
+			cv::imshow(kWindowName, output_frame_mat);
 			cv::waitKey(1); // required for cv::imshow
 		}
 
 		// wait for next frame (when playing from file)
 		if (!use_camera && cap_fps > 0.0)
 		{
+			PROF_NAMED("wait_next_frame");
+
 			const double frame_us = (1.0 / cap_fps) * 1e6;
 			for (;;)
 			{
@@ -313,6 +326,8 @@ absl::Status UmpPipeline::RunImpl()
 					std::this_thread::sleep_for(std::chrono::microseconds((size_t)(frame_us - delta)));
 			}
 		}
+
+		frame_id++;
 	}
 
 	log_i("CalculatorGraph::CloseInputStream");
@@ -358,4 +373,10 @@ absl::Status UmpPipeline::LoadResourceFile(const std::string& filename, std::str
 	RET_CHECK_OK(mediapipe::file::GetContents(path, &out_str));
 
 	return absl::OkStatus();
+}
+
+void UmpPipeline::LogProfilerStats() {
+	#if defined(PROF_ENABLE)
+		log_i(std::string(PROF_SUMMARY));
+	#endif
 }

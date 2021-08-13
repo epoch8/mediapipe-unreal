@@ -27,6 +27,7 @@ cc_library(
 		"//mediapipe/framework/port:file_helpers",
 		"//mediapipe/framework/port:status",
 		
+		"//mediapipe/calculators/core:mux_calculator",
 		"//mediapipe/graphs/face_mesh:desktop_live_calculators",
 		"//mediapipe/modules/face_geometry:env_generator_calculator",
 		"//mediapipe/modules/face_geometry:face_geometry_from_landmarks",
@@ -36,8 +37,7 @@ cc_library(
 		"//mediapipe/graphs/iris_tracking:iris_tracking_cpu_video_input_deps",
 		"//mediapipe/graphs/iris_tracking:iris_tracking_cpu_deps",
 		"//mediapipe/graphs/iris_tracking:iris_depth_cpu_deps",
-
-		"//mediapipe/calculators/core:mux_calculator",
+		"//mediapipe/graphs/object_detection_3d:desktop_cpu_calculators",
 
 		"//mediapipe/unreal:headers",
 	],

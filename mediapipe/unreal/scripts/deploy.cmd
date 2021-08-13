@@ -52,6 +52,14 @@ md "%DEPLOY_ROOT%\mediapipe\modules\holistic_landmark"
 
 copy /Y "mediapipe\modules\holistic_landmark\hand_recrop.tflite" "%DEPLOY_ROOT%\mediapipe\modules\holistic_landmark\"
 
+:: objectron
+
+md "%DEPLOY_ROOT%\mediapipe\modules\objectron"
+
+copy /Y "mediapipe\modules\objectron\object_detection_ssd_mobilenetv2_oidv4_fp16.tflite" "%DEPLOY_ROOT%\mediapipe\modules\objectron\"
+copy /Y "mediapipe\modules\objectron\object_detection_oidv4_labelmap.txt" "%DEPLOY_ROOT%\mediapipe\modules\objectron\"
+copy /Y "mediapipe\modules\objectron\object_detection_3d_cup.tflite" "%DEPLOY_ROOT%\mediapipe\modules\objectron\"
+
 :: graphs
 
 xcopy /Y /E "mediapipe\unreal\graphs" "%DEPLOY_ROOT%\mediapipe\unreal\"
@@ -61,7 +69,7 @@ xcopy /Y /E "mediapipe\unreal\graphs" "%DEPLOY_ROOT%\mediapipe\unreal\"
 md "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64"
 copy /Y "%DEPLOY_ROOT%\ump_shared.dll" "%UNREAL_PLUGIN_DIR%\Binaries\Win64\"
 copy /Y "%DEPLOY_ROOT%\ump_shared.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
-copy /Y "%DEPLOY_ROOT%\opencv_world3410.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
+:: copy /Y "%DEPLOY_ROOT%\opencv_world3410.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
 copy /Y "mediapipe\unreal\ump_api.h" "%UNREAL_PLUGIN_DIR%\Source\MediaPipe\Private\"
 xcopy /Y /E "bazel-bin\mediapipe\unreal\mediapipe" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Data\mediapipe\"
 
