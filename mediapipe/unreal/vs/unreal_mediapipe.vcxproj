@@ -71,7 +71,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>Makefile</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -105,14 +105,13 @@
     <LinkIncremental>true</LinkIncremental>
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
-    <IncludePath>
-    </IncludePath>
     <NMakeBuildCommandLine>..\scripts\build_app.cmd
 </NMakeBuildCommandLine>
     <NMakeIncludeSearchPath>$(VC_IncludePath);$(SolutionDir);c:\cv\_bin\opencv-3.4.10\include\;c:\cv\_bin\opencv-3.4.10\include\opencv2\;..\..\..\bazel-mediapipe\external\com_google_absl\;..\..\..\bazel-mediapipe\external\com_google_protobuf\;..\..\..\bazel-mediapipe\external\com_github_gflags_gflags\;..\..\..\bazel-mediapipe\external\com_github_glog_glog\;..\..\..\bazel-bin\;..\..\..\</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <NMakeBuildCommandLine>..\scripts\build_app.cmd</NMakeBuildCommandLine>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
