@@ -20,7 +20,7 @@ protected:
 	virtual ~IUmpLog() {}
 
 public:
-	virtual void Println(EUmpVerbosity verbosity, const char* msg) const {}
+	virtual void Println(EUmpVerbosity verbosity, const char* msg) const { (void)verbosity; (void)msg; }
 };
 
 //
@@ -68,6 +68,7 @@ public:
 	virtual void SetCaptureParams(int cam_id, int cam_api, int cam_resx, int cam_resy, int cam_fps) = 0;
 	virtual void SetOverlay(bool overlay) = 0;
 	virtual class IUmpObserver* CreateObserver(const char* stream_name) = 0;
+	virtual void SetFrameCallback(class IUmpFrameCallback* callback) = 0;
 	virtual bool Start() = 0;
 	virtual void Stop() = 0;
 
@@ -94,4 +95,32 @@ public:
 	virtual void SetPacketCallback(IUmpPacketCallback* callback) = 0;
 	virtual size_t GetMessageType() = 0;
 	virtual const void* const GetData() = 0;
+};
+
+//
+// Frame callback
+//
+
+enum class EUmpPixelFormat
+{
+	Unknown = 0,
+	B8G8R8A8,
+	R8G8B8A8,
+	NUM_ITEMS // last
+};
+
+class IUmpFrame : public IUmpObject
+{
+public:
+	virtual const void* GetData() const = 0;
+	virtual EUmpPixelFormat GetFormat() const = 0;
+	virtual int GetPitch() const = 0;
+	virtual int GetWidth() const = 0;
+	virtual int GetHeight() const = 0;
+};
+
+class IUmpFrameCallback
+{
+public:
+	virtual void OnUmpFrame(IUmpFrame* frame) = 0;
 };

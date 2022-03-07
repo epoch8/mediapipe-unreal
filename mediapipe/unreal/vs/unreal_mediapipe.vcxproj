@@ -22,6 +22,7 @@
     <ClInclude Include="..\ump_api.h" />
     <ClInclude Include="..\ump_context.h" />
     <ClInclude Include="..\ump_dll.h" />
+    <ClInclude Include="..\ump_frame.h" />
     <ClInclude Include="..\ump_object.h" />
     <ClInclude Include="..\ump_profiler.h" />
     <ClInclude Include="..\ump_observer.h" />
@@ -107,7 +108,7 @@
     </CustomBuildAfterTargets>
     <NMakeBuildCommandLine>..\scripts\build_app.cmd
 </NMakeBuildCommandLine>
-    <NMakeIncludeSearchPath>$(VC_IncludePath);$(SolutionDir);c:\cv\_bin\opencv-3.4.10\include\;c:\cv\_bin\opencv-3.4.10\include\opencv2\;..\..\..\bazel-mediapipe\external\com_google_absl\;..\..\..\bazel-mediapipe\external\com_google_protobuf\;..\..\..\bazel-mediapipe\external\com_github_gflags_gflags\;..\..\..\bazel-mediapipe\external\com_github_glog_glog\;..\..\..\bazel-bin\;..\..\..\</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(VC_IncludePath);$(SolutionDir);c:\cv\_bin\opencv-3.4.10\include\;c:\cv\_bin\opencv-3.4.10\include\opencv2\;..\..\..\bazel-ue4-mediapipe-wrapper\external\com_google_absl\;..\..\..\bazel-ue4-mediapipe-wrapper\external\com_google_protobuf\;..\..\..\bazel-ue4-mediapipe-wrapper\external\com_github_gflags_gflags\;..\..\..\bazel-ue4-mediapipe-wrapper\external\com_github_glog_glog\;..\..\..\bazel-bin\;..\..\..\</NMakeIncludeSearchPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

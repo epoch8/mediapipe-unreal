@@ -57,6 +57,9 @@
     <ClInclude Include="..\ump_observer.h">
       <Filter>core</Filter>
     </ClInclude>
+    <ClInclude Include="..\ump_frame.h">
+      <Filter>core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\ump_pipeline.cc">

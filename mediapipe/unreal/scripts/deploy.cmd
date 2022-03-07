@@ -70,7 +70,7 @@ md "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64"
 copy /Y "%DEPLOY_ROOT%\ump_shared.dll" "%UNREAL_PLUGIN_DIR%\Binaries\Win64\"
 copy /Y "%DEPLOY_ROOT%\ump_shared.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
 :: copy /Y "%DEPLOY_ROOT%\opencv_world3410.dll" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Binaries\Win64\"
-copy /Y "mediapipe\unreal\ump_api.h" "%UNREAL_PLUGIN_DIR%\Source\MediaPipe\Private\"
+copy /Y "mediapipe\unreal\ump_api.h" "%UNREAL_PLUGIN_DIR%\Source\MediaPipe\Public\"
 xcopy /Y /E "bazel-bin\mediapipe\unreal\mediapipe" "%UNREAL_PLUGIN_DIR%\ThirdParty\mediapipe\Data\mediapipe\"
 
 cd "%INITIAL_DIR%"

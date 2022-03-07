@@ -1,5 +1,6 @@
 #include "ump_pipeline.h"
 #include "ump_observer.h"
+#include "ump_frame.h"
 
 #include "mediapipe/framework/formats/image_frame.h"
 #include "mediapipe/framework/formats/image_frame_opencv.h"
@@ -29,43 +30,49 @@ UmpPipeline::~UmpPipeline()
 void UmpPipeline::SetGraphConfiguration(const char* filename)
 {
 	log_i(strf("SetGraphConfiguration: %s", filename));
-	config_filename = filename;
+	_config_filename = filename;
 }
 
 void UmpPipeline::SetCaptureFromFile(const char* filename)
 {
 	log_i(strf("SetCaptureFromFile: %s", filename));
-	input_filename = filename;
+	_input_filename = filename;
 }
 
-void UmpPipeline::SetCaptureParams(int in_cam_id, int in_cam_api, int in_cam_resx, int in_cam_resy, int in_cam_fps)
+void UmpPipeline::SetCaptureParams(int cam_id, int cam_api, int cam_resx, int cam_resy, int cam_fps)
 {
-	log_i(strf("SetCaptureParams: cam=%d api=%d w=%d h=%d fps=%d", in_cam_id, in_cam_api, in_cam_resx, in_cam_resy, in_cam_fps));
-	cam_id = in_cam_id;
-	cam_api = in_cam_api;
-	cam_resx = in_cam_resx;
-	cam_resy = in_cam_resy;
-	cam_fps = in_cam_fps;
+	log_i(strf("SetCaptureParams: cam=%d api=%d w=%d h=%d fps=%d", cam_id, cam_api, cam_resx, cam_resy, cam_fps));
+	_cam_id = cam_id;
+	_cam_api = cam_api;
+	_cam_resx = cam_resx;
+	_cam_resy = cam_resy;
+	_cam_fps = cam_fps;
 }
 
 void UmpPipeline::SetOverlay(bool in_overlay)
 {
 	log_i(strf("SetOverlay: %d", (in_overlay ? 1 : 0)));
-	overlay = in_overlay;
+	_show_overlay = in_overlay;
 }
 
 IUmpObserver* UmpPipeline::CreateObserver(const char* stream_name)
 {
 	log_i(strf("CreateObserver: %s", stream_name));
-	if (run_flag)
+	if (_run_flag)
 	{
 		log_e("Invalid state: pipeline running");
 		return nullptr;
 	}
 	auto* observer = new UmpObserver(stream_name);
 	observer->AddRef();
-	observers.emplace_back(observer);
+	_observers.emplace_back(observer);
 	return observer;
+}
+
+void UmpPipeline::SetFrameCallback(class IUmpFrameCallback* callback)
+{
+	log_i(strf("SetFrameCallback: %p", callback));
+	_frame_callback = callback;
 }
 
 bool UmpPipeline::Start()
@@ -74,10 +81,10 @@ bool UmpPipeline::Start()
 	try
 	{
 		log_i("UmpPipeline::Start");
-		frame_id = 0;
-		frame_ts = 0;
-		run_flag = true;
-		worker = std::make_unique<std::thread>([this]() { this->WorkerThread(); });
+		_frame_id = 0;
+		_frame_ts = 0;
+		_run_flag = true;
+		_worker = std::make_unique<std::thread>([this]() { this->WorkerThread(); });
 		log_i("UmpPipeline::Start OK");
 		return true;
 	}
@@ -92,12 +99,12 @@ void UmpPipeline::Stop()
 {
 	try
 	{
-		run_flag = false;
-		if (worker)
+		_run_flag = false;
+		if (_worker)
 		{
 			log_i("UmpPipeline::Stop");
-			worker->join();
-			worker.reset();
+			_worker->join();
+			_worker.reset();
 			log_i("UmpPipeline::Stop OK");
 		}
 	}
@@ -140,11 +147,13 @@ void UmpPipeline::ShutdownImpl()
 {
 	log_i("UmpPipeline::Shutdown");
 
-	graph.reset();
-	observers.clear();
+	_graph.reset();
+	_observers.clear();
 
-	if (overlay)
+	if (_show_overlay)
 		cv::destroyAllWindows();
+
+	ReleaseFramePool();
 
 	log_i("UmpPipeline::Shutdown OK");
 }
@@ -165,26 +174,26 @@ absl::Status UmpPipeline::RunImpl()
 	// init mediapipe
 
 	std::string config_str;
-	RET_CHECK_OK(LoadGraphConfig(config_filename, config_str));
+	RET_CHECK_OK(LoadGraphConfig(_config_filename, config_str));
 
 	log_i("ParseTextProto");
 	mediapipe::CalculatorGraphConfig config;
 	RET_CHECK(mediapipe::ParseTextProto<mediapipe::CalculatorGraphConfig>(config_str, &config));
 
 	log_i("CalculatorGraph::Initialize");
-	graph.reset(new mediapipe::CalculatorGraph());
-	RET_CHECK_OK(graph->Initialize(config));
+	_graph.reset(new mediapipe::CalculatorGraph());
+	RET_CHECK_OK(_graph->Initialize(config));
 
-	for (auto& iter : observers)
+	for (auto& iter : _observers)
 	{
-		RET_CHECK_OK(iter->ObserveOutputStream(graph.get()));
+		RET_CHECK_OK(iter->ObserveOutputStream(_graph.get()));
 	}
 
 	std::unique_ptr<mediapipe::OutputStreamPoller> output_poller;
-	if (overlay)
+	if (_show_overlay || _frame_callback)
 	{
 		//ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller poller, graph->AddOutputStreamPoller(kOutputStream));
-		auto output_poller_sop = graph->AddOutputStreamPoller(kOutputStream);
+		auto output_poller_sop = _graph->AddOutputStreamPoller(kOutputStream);
 		RET_CHECK(output_poller_sop.ok());
 		output_poller = std::make_unique<mediapipe::OutputStreamPoller>(std::move(output_poller_sop.value()));
 	}
@@ -193,37 +202,37 @@ absl::Status UmpPipeline::RunImpl()
 
 	log_i("VideoCapture::open");
 	cv::VideoCapture capture;
-	use_camera = input_filename.empty();
+	_use_camera = _input_filename.empty();
 
-	if (use_camera)
+	if (_use_camera)
 	{
 		#if defined(_WIN32)
-		if (cam_api == cv::CAP_ANY)
+		if (_cam_api == cv::CAP_ANY)
 		{
 			// CAP_MSMF is broken on windows! use CAP_DSHOW by default, also see: https://github.com/opencv/opencv/issues/17687
-			cam_api = cv::CAP_DSHOW;
+			_cam_api = cv::CAP_DSHOW;
 		}
 		#endif
 
-		capture.open(cam_id, cam_api);
+		capture.open(_cam_id, _cam_api);
 	}
 	else
 	{
-		capture.open(*input_filename);
+		capture.open(*_input_filename);
 	}
 
 	RET_CHECK(capture.isOpened());
 
-	if (use_camera)
+	if (_use_camera)
 	{
-		if (cam_resx > 0 && cam_resy > 0)
+		if (_cam_resx > 0 && _cam_resy > 0)
 		{
-			capture.set(cv::CAP_PROP_FRAME_WIDTH, cam_resx);
-			capture.set(cv::CAP_PROP_FRAME_HEIGHT, cam_resy);
+			capture.set(cv::CAP_PROP_FRAME_WIDTH, _cam_resx);
+			capture.set(cv::CAP_PROP_FRAME_HEIGHT, _cam_resy);
 		}
 
-		if (cam_fps > 0)
-			capture.set(cv::CAP_PROP_FPS, cam_fps);
+		if (_cam_fps > 0)
+			capture.set(cv::CAP_PROP_FPS, _cam_fps);
 	}
 
 	const int cap_resx = (int)capture.get(cv::CAP_PROP_FRAME_WIDTH);
@@ -231,21 +240,23 @@ absl::Status UmpPipeline::RunImpl()
 	const double cap_fps = (double)capture.get(cv::CAP_PROP_FPS);
 	log_i(strf("CAPS: w=%d h=%d fps=%f", cap_resx, cap_resy, cap_fps));
 
-	if (overlay)
+	if (_show_overlay)
 		cv::namedWindow(kWindowName, cv::WINDOW_AUTOSIZE);
 
 	// start
 
-	cv::Mat camera_frame_raw;
-	cv::Mat camera_frame;
+	cv::Mat cvmat_bgr;
+	cv::Mat cvmat_rgb;
+
+	auto frame_dtor = [](UmpFrame* frame) {  };
 
 	log_i("CalculatorGraph::StartRun");
-	RET_CHECK_OK(graph->StartRun({}));
+	RET_CHECK_OK(_graph->StartRun({}));
 
 	double t0 = get_timestamp_us();
 
 	log_i("MAIN LOOP");
-	while (run_flag)
+	while (_run_flag)
 	{
 		double t1 = get_timestamp_us();
 		double dt = t1 - t0;
@@ -255,42 +266,42 @@ absl::Status UmpPipeline::RunImpl()
 
 		{
 			PROF_NAMED("capture_frame");
-			capture >> camera_frame_raw;
+			capture >> cvmat_bgr;
 		}
 
-		if (!use_camera && camera_frame_raw.empty())
+		if (!_use_camera && cvmat_bgr.empty())
 		{
 			log_i("VideoCapture: EOF");
 			break;
 		}
 
 		const double frame_timestamp_us = get_timestamp_us();
-		frame_ts = frame_timestamp_us;
+		_frame_ts = frame_timestamp_us;
 
 		{
-			PROF_NAMED("process_frame");
+			PROF_NAMED("enque_frame");
 
-			cv::cvtColor(camera_frame_raw, camera_frame, cv::COLOR_BGR2RGB);
-			if (use_camera)
-				cv::flip(camera_frame, camera_frame, 1);
+			cv::cvtColor(cvmat_bgr, cvmat_rgb, cv::COLOR_BGR2RGB);
+			if (_use_camera)
+				cv::flip(cvmat_rgb, cvmat_rgb, 1);
 
-			auto input_frame = absl::make_unique<mediapipe::ImageFrame>(
-				mediapipe::ImageFormat::SRGB, camera_frame.cols, camera_frame.rows,
+			auto input_mif = absl::make_unique<mediapipe::ImageFrame>(
+				mediapipe::ImageFormat::SRGB, cvmat_rgb.cols, cvmat_rgb.rows,
 				mediapipe::ImageFrame::kDefaultAlignmentBoundary);
 
-			cv::Mat input_frame_mat = mediapipe::formats::MatView(input_frame.get());
-			camera_frame.copyTo(input_frame_mat);
+			// TODO: zero copy
+			cv::Mat input_mif_view = mediapipe::formats::MatView(input_mif.get());
+			cvmat_rgb.copyTo(input_mif_view);
 
-			RET_CHECK_OK(graph->AddPacketToInputStream(
+			RET_CHECK_OK(_graph->AddPacketToInputStream(
 				kInputStream,
-				mediapipe::Adopt(input_frame.release())
+				mediapipe::Adopt(input_mif.release())
 				.At(mediapipe::Timestamp((size_t)frame_timestamp_us))));
 		}
 
-		// draw overlay
-		if (overlay && output_poller)
+		if (output_poller)
 		{
-			PROF_NAMED("draw_overlay");
+			PROF_NAMED("poll_output");
 
 			mediapipe::Packet packet;
 			if (!output_poller->Next(&packet))
@@ -299,19 +310,32 @@ absl::Status UmpPipeline::RunImpl()
 				break;
 			}
 
-			auto& output_frame = packet.Get<mediapipe::ImageFrame>();
-			cv::Mat output_frame_mat = mediapipe::formats::MatView(&output_frame);
+			// TODO: zero copy
+			auto& output_mif = packet.Get<mediapipe::ImageFrame>();
+			cv::Mat output_mif_view = mediapipe::formats::MatView(&output_mif);
 
-			auto stat = strf("%.0f | %.4f | %" PRIu64 "", frame_ts, dt * 0.001, frame_id);
-			cv::putText(output_frame_mat, *stat, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
+			if (_frame_callback)
+			{
+				UmpFrame* frame = AllocFrame();
+				auto& dst_mat = frame->GetMatrixRef();
+				cv::cvtColor(output_mif_view, dst_mat, cv::COLOR_RGB2BGRA); // unreal requires BGRA8 or RGBA8
+				frame->_format = EUmpPixelFormat::B8G8R8A8;
+				_frame_callback->OnUmpFrame(static_cast<IUmpFrame*>(frame)); // unreal should call frame->Release()
+			}
 
-			cv::cvtColor(output_frame_mat, output_frame_mat, cv::COLOR_RGB2BGR);
-			cv::imshow(kWindowName, output_frame_mat);
-			cv::waitKey(1); // required for cv::imshow
+			if (_show_overlay)
+			{
+				auto stat = strf("%.0f | %.4f | %" PRIu64 "", _frame_ts, dt * 0.001, _frame_id);
+				cv::putText(output_mif_view, *stat, cv::Point(10, 20), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 255, 0));
+
+				cv::cvtColor(output_mif_view, output_mif_view, cv::COLOR_RGB2BGR);
+				cv::imshow(kWindowName, output_mif_view);
+				cv::waitKey(1); // required for cv::imshow
+			}
 		}
 
 		// wait for next frame (when playing from file)
-		if (!use_camera && cap_fps > 0.0)
+		if (!_use_camera && cap_fps > 0.0)
 		{
 			PROF_NAMED("wait_next_frame");
 
@@ -327,14 +351,59 @@ absl::Status UmpPipeline::RunImpl()
 			}
 		}
 
-		frame_id++;
+		_frame_id++;
 	}
 
 	log_i("CalculatorGraph::CloseInputStream");
-	graph->CloseInputStream(kInputStream);
-	graph->WaitUntilDone();
+	_graph->CloseInputStream(kInputStream);
+	_graph->WaitUntilDone();
 
 	return absl::OkStatus();
+}
+
+UmpFrame* UmpPipeline::AllocFrame()
+{
+	PROF_NAMED("alloc_frame");
+	UmpFrame* frame = nullptr;
+
+	if (!_frame_pool.empty())
+	{
+		std::lock_guard<std::mutex> lock(_frame_mux);
+		if (!_frame_pool.empty())
+		{
+			frame = _frame_pool.back();
+			_frame_pool.pop_back();
+
+			//log_d(strf("reuse UmpFrame %p", frame));
+			return frame;
+		}
+	}
+
+	auto* context = this;
+	UmpCustomDtor dtor = [context](IUmpObject* obj) { context->ReturnFrameToPool(static_cast<UmpFrame*>(obj)); };
+	frame = new UmpFrame(dtor); // frame->Release() triggers custom dtor
+
+	log_d(strf("new UmpFrame %p", frame));
+	return frame;
+}
+
+void UmpPipeline::ReturnFrameToPool(UmpFrame* frame)
+{
+	//log_d(strf("pool UmpFrame %p", frame));
+	frame->AddRef(); // keep ref counter alive
+	std::lock_guard<std::mutex> lock(_frame_mux);
+	_frame_pool.push_back(frame);
+}
+
+void UmpPipeline::ReleaseFramePool()
+{
+	// manual delete because frame->Release() triggers ReturnFrameToPool() 
+	for (auto* frame : _frame_pool)
+	{
+		log_d(strf("delete UmpFrame %p", frame));
+		delete frame;
+	}
+	_frame_pool.clear();
 }
 
 // allows multiple files separated by ';'
