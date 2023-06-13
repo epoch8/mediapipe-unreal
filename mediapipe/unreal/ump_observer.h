@@ -36,7 +36,7 @@ public:
 				PROF_NAMED("observer_callback");
 
 				_raw_data = pk.GetRaw(); // requires patched mediapipe\framework\packet.h
-				_message_type = pk.GetTypeId();
+				_message_type = pk.GetTypeIdUMP();
 
 				_callback->OnUmpPacket(this);
 

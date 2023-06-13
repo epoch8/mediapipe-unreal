@@ -190,7 +190,6 @@ class Packet {
   // Crashes if IsEmpty() == true.
   TypeId GetTypeId() const;
   size_t GetTypeIdUMP() const;
-
   const void * const GetRaw() const; // UMP
 
   // Returns the timestamp.
