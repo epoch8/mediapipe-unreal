@@ -28,6 +28,13 @@ namespace mediapipe {
 #define GL_HALF_FLOAT 0x140B
 #endif  // GL_HALF_FLOAT
 
+#ifdef __EMSCRIPTEN__
+#ifndef GL_HALF_FLOAT_OES
+#define GL_HALF_FLOAT_OES 0x8D61
+#endif  // GL_HALF_FLOAT_OES
+#endif  // __EMSCRIPTEN__
+
+#if !MEDIAPIPE_DISABLE_GPU
 #ifdef GL_ES_VERSION_2_0
 static void AdaptGlTextureInfoForGLES2(GlTextureInfo* info) {
   switch (info->gl_internal_format) {
@@ -47,6 +54,12 @@ static void AdaptGlTextureInfoForGLES2(GlTextureInfo* info) {
     case GL_RG8:
       info->gl_internal_format = info->gl_format = GL_RG_EXT;
       return;
+#ifdef __EMSCRIPTEN__
+    case GL_RGBA16F:
+      info->gl_internal_format = GL_RGBA;
+      info->gl_type = GL_HALF_FLOAT_OES;
+      return;
+#endif  // __EMSCRIPTEN__
     default:
       return;
   }
@@ -77,15 +90,23 @@ const GlTextureInfo& GlTextureInfoForGpuBufferFormat(GpuBufferFormat format,
            }},
           {GpuBufferFormat::kOneComponent8,
            {
-  // This should be GL_RED, but it would change the output for existing
-  // shaders. It would not be a good representation of a grayscale texture,
-  // unless we use texture swizzling. We could add swizzle parameters (e.g.
-  // GL_TEXTURE_SWIZZLE_R) in GLES 3 and desktop GL, and use GL_LUMINANCE
-  // in GLES 2. Or we could just punt and make it a red texture.
-  // {GL_R8, GL_RED, GL_UNSIGNED_BYTE, 1},
+  // This format is like RGBA grayscale: GL_LUMINANCE replicates
+  // the single channel texel values to RGB channels, and set alpha
+  // to 1.0. If it is desired to see only the texel values in the R
+  // channel, use kOneComponent8Red instead.
 #if !TARGET_OS_OSX
                {GL_LUMINANCE, GL_LUMINANCE, GL_UNSIGNED_BYTE, 1},
+#else
+               {GL_R8, GL_RED, GL_UNSIGNED_BYTE, 1},
 #endif  // TARGET_OS_OSX
+           }},
+          {GpuBufferFormat::kOneComponent8Red,
+           {
+               {GL_R8, GL_RED, GL_UNSIGNED_BYTE, 1},
+           }},
+          {GpuBufferFormat::kTwoComponent8,
+           {
+               {GL_RG8, GL_RG, GL_UNSIGNED_BYTE, 1},
            }},
 #ifdef __APPLE__
           // TODO: figure out GL_RED_EXT etc. on Android.
@@ -135,7 +156,7 @@ const GlTextureInfo& GlTextureInfoForGpuBufferFormat(GpuBufferFormat format,
            }},
           {GpuBufferFormat::kRGBAFloat128,
            {
-               {GL_RGBA, GL_RGBA, GL_FLOAT, 1},
+               {GL_RGBA32F, GL_RGBA, GL_FLOAT, 1},
            }},
       }};
 
@@ -176,6 +197,7 @@ const GlTextureInfo& GlTextureInfoForGpuBufferFormat(GpuBufferFormat format,
   CHECK_LT(plane, planes.size()) << "invalid plane number";
   return planes[plane];
 }
+#endif  // MEDIAPIPE_DISABLE_GPU
 
 ImageFormat::Format ImageFormatForGpuBufferFormat(GpuBufferFormat format) {
   switch (format) {
@@ -194,10 +216,19 @@ ImageFormat::Format ImageFormatForGpuBufferFormat(GpuBufferFormat format) {
       return ImageFormat::SRGB;
     case GpuBufferFormat::kTwoComponentFloat32:
       return ImageFormat::VEC32F2;
+    case GpuBufferFormat::kRGBAFloat128:
+      return ImageFormat::VEC32F4;
+    case GpuBufferFormat::kRGBA32:
+      // TODO: this likely maps to ImageFormat::SRGBA
     case GpuBufferFormat::kGrayHalf16:
+    case GpuBufferFormat::kOneComponent8Red:
+    case GpuBufferFormat::kTwoComponent8:
     case GpuBufferFormat::kTwoComponentHalf16:
     case GpuBufferFormat::kRGBAHalf64:
-    case GpuBufferFormat::kRGBAFloat128:
+    case GpuBufferFormat::kNV12:
+    case GpuBufferFormat::kNV21:
+    case GpuBufferFormat::kI420:
+    case GpuBufferFormat::kYV12:
     case GpuBufferFormat::kUnknown:
       return ImageFormat::UNKNOWN;
   }
@@ -214,6 +245,8 @@ GpuBufferFormat GpuBufferFormatForImageFormat(ImageFormat::Format format) {
       return GpuBufferFormat::kGrayFloat32;
     case ImageFormat::VEC32F2:
       return GpuBufferFormat::kTwoComponentFloat32;
+    case ImageFormat::VEC32F4:
+      return GpuBufferFormat::kRGBAFloat128;
     case ImageFormat::GRAY8:
       return GpuBufferFormat::kOneComponent8;
     case ImageFormat::YCBCR420P:

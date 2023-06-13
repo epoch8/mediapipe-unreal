@@ -16,13 +16,35 @@
 #define MEDIAPIPE_FRAMEWORK_TEST_SERVICE_H_
 
 #include "mediapipe/framework/calculator_framework.h"
+#include "mediapipe/framework/graph_service.h"
 
 namespace mediapipe {
 
 using TestServiceObject = std::map<std::string, int>;
 
-extern const GraphService<TestServiceObject> kTestService;
-extern const GraphService<int> kAnotherService;
+inline constexpr GraphService<TestServiceObject> kTestService(
+    "test_service", GraphServiceBase::kDisallowDefaultInitialization);
+inline constexpr GraphService<int> kAnotherService(
+    "another_service", GraphServiceBase::kAllowDefaultInitialization);
+
+class NoDefaultConstructor {
+ public:
+  NoDefaultConstructor() = delete;
+};
+inline constexpr GraphService<NoDefaultConstructor> kNoDefaultService(
+    "no_default_service", GraphServiceBase::kAllowDefaultInitialization);
+
+class NeedsCreateMethod {
+ public:
+  static absl::StatusOr<std::shared_ptr<NeedsCreateMethod>> Create() {
+    return std::shared_ptr<NeedsCreateMethod>(new NeedsCreateMethod());
+  }
+
+ private:
+  NeedsCreateMethod() = default;
+};
+inline constexpr GraphService<NeedsCreateMethod> kNeedsCreateService(
+    "needs_create_service", GraphServiceBase::kAllowDefaultInitialization);
 
 // Use a service.
 class TestServiceCalculator : public CalculatorBase {

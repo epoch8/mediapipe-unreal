@@ -17,12 +17,14 @@ package com.google.mediapipe.framework;
 import com.google.common.base.Preconditions;
 import com.google.common.flogger.FluentLogger;
 import com.google.mediapipe.framework.ProtoUtil.SerializedMessage;
+import com.google.protobuf.Internal;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.MessageLite;
 import com.google.protobuf.Parser;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import javax.annotation.Nullable;
 
 /**
  * Converts the {@link Packet} to java accessible data types.
@@ -119,11 +121,20 @@ public final class PacketGetter {
     return nativeGetProtoBytes(packet.getNativeHandle());
   }
 
-  public static <T extends MessageLite> T getProto(final Packet packet, Class<T> clazz)
+  public static <T extends MessageLite> T getProto(final Packet packet, T defaultInstance)
       throws InvalidProtocolBufferException {
     SerializedMessage result = new SerializedMessage();
     nativeGetProto(packet.getNativeHandle(), result);
-    return ProtoUtil.unpack(result, clazz);
+    return ProtoUtil.unpack(result, defaultInstance);
+  }
+
+  /**
+   * @deprecated {@link #getProto(Packet, MessageLite)} is safer to use in obfuscated builds.
+   */
+  @Deprecated
+  public static <T extends MessageLite> T getProto(final Packet packet, Class<T> clazz)
+      throws InvalidProtocolBufferException {
+    return getProto(packet, Internal.getDefaultInstance(clazz));
   }
 
   public static short[] getInt16Vector(final Packet packet) {
@@ -162,12 +173,23 @@ public final class PacketGetter {
     }
   }
 
+  public static <T extends MessageLite> List<T> getProtoVector(
+      final Packet packet, T defaultInstance) {
+    @SuppressWarnings("unchecked")
+    Parser<T> parser = (Parser<T>) defaultInstance.getParserForType();
+    return getProtoVector(packet, parser);
+  }
+
   public static int getImageWidth(final Packet packet) {
     return nativeGetImageWidth(packet.getNativeHandle());
   }
 
   public static int getImageHeight(final Packet packet) {
     return nativeGetImageHeight(packet.getNativeHandle());
+  }
+
+  public static int getImageNumChannels(final Packet packet) {
+    return nativeGetImageNumChannels(packet.getNativeHandle());
   }
 
   /**
@@ -180,6 +202,56 @@ public final class PacketGetter {
    */
   public static boolean getImageData(final Packet packet, ByteBuffer buffer) {
     return nativeGetImageData(packet.getNativeHandle(), buffer);
+  }
+
+  /**
+   * Returns a read-only view of the native image buffer as a ByteBuffer. As this method does not
+   * copy the data, the result only remains valid while the backing MediaPipe image is on the stack.
+   * The image must store contiguous pixels, otherwise the method returns {@code null}.
+   *
+   * <p>Note: this function does not assume the pixel format.
+   */
+  @Nullable
+  public static ByteBuffer getImageDataDirectly(final Packet packet) {
+    return nativeGetImageDataDirect(packet.getNativeHandle()).asReadOnlyBuffer();
+  }
+
+  /** Returns the size of Image list. This helps to determine size of allocated ByteBuffer array. */
+  public static int getImageListSize(final Packet packet) {
+    return nativeGetImageListSize(packet.getNativeHandle());
+  }
+
+  /**
+   * Returns the width of first image in an image list. This helps to determine size of allocated
+   * ByteBuffer array.
+   */
+  public static int getImageWidthFromImageList(final Packet packet) {
+    return nativeGetImageWidthFromImageList(packet.getNativeHandle());
+  }
+
+  /**
+   * Returns the height of first image in an image list. This helps to determine size of allocated
+   * ByteBuffer array.
+   */
+  public static int getImageHeightFromImageList(final Packet packet) {
+    return nativeGetImageHeightFromImageList(packet.getNativeHandle());
+  }
+
+  /**
+   * Assign the native image buffer array in given ByteBuffer array. It assumes given ByteBuffer
+   * array has the the same size of image list packet, and assumes the output buffer stores pixels
+   * contiguously. It returns false if this assumption does not hold.
+   *
+   * <p>If deepCopy is true, it assumes the given buffersArray has allocated the required size of
+   * ByteBuffer to copy image data to. If false, the ByteBuffer will wrap the memory address of
+   * MediaPipe ImageFrame of graph output, and the ByteBuffer data is available only when MediaPipe
+   * graph is alive.
+   *
+   * <p>Note: this function does not assume the pixel format.
+   */
+  public static boolean getImageList(
+      final Packet packet, ByteBuffer[] buffersArray, boolean deepCopy) {
+    return nativeGetImageList(packet.getNativeHandle(), buffersArray, deepCopy);
   }
 
   /**
@@ -288,7 +360,19 @@ public final class PacketGetter {
    */
   public static GraphTextureFrame getTextureFrame(final Packet packet) {
     return new GraphTextureFrame(
-        nativeGetGpuBuffer(packet.getNativeHandle()), packet.getTimestamp());
+        nativeGetGpuBuffer(packet.getNativeHandle(), /* waitOnCpu= */ true), packet.getTimestamp());
+  }
+
+  /**
+   * Works like {@link #getTextureFrame(Packet)}, but does not insert a CPU wait for the texture's
+   * producer before returning. Instead, a GPU wait will automatically occur when
+   * GraphTextureFrame#getTextureName is called.
+   */
+  public static GraphTextureFrame getTextureFrameDeferredSync(final Packet packet) {
+    return new GraphTextureFrame(
+        nativeGetGpuBuffer(packet.getNativeHandle(), /* waitOnCpu= */ false),
+        packet.getTimestamp(),
+        /* deferredSync= */ true);
   }
 
   private static native long nativeGetPacketFromReference(long nativePacketHandle);
@@ -333,7 +417,20 @@ public final class PacketGetter {
 
   private static native int nativeGetImageHeight(long nativePacketHandle);
 
+  private static native int nativeGetImageNumChannels(long nativePacketHandle);
+
   private static native boolean nativeGetImageData(long nativePacketHandle, ByteBuffer buffer);
+
+  private static native ByteBuffer nativeGetImageDataDirect(long nativePacketHandle);
+
+  private static native int nativeGetImageListSize(long nativePacketHandle);
+
+  private static native int nativeGetImageWidthFromImageList(long nativePacketHandle);
+
+  private static native int nativeGetImageHeightFromImageList(long nativePacketHandle);
+
+  private static native boolean nativeGetImageList(
+      long nativePacketHandle, ByteBuffer[] bufferArray, boolean deepCopy);
 
   private static native boolean nativeGetRgbaFromRgb(long nativePacketHandle, ByteBuffer buffer);
   // Retrieves the values that are in the VideoHeader.
@@ -356,7 +453,7 @@ public final class PacketGetter {
 
   private static native int nativeGetGpuBufferName(long nativePacketHandle);
 
-  private static native long nativeGetGpuBuffer(long nativePacketHandle);
+  private static native long nativeGetGpuBuffer(long nativePacketHandle, boolean waitOnCpu);
 
   private PacketGetter() {}
 }

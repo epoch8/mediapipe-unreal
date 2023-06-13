@@ -1,7 +1,8 @@
 ---
-layout: default
+layout: forward
+target: https://developers.google.com/mediapipe/solutions/vision/face_detector/
 title: Face Detection
-parent: Solutions
+parent: MediaPipe Legacy Solutions
 nav_order: 1
 ---
 
@@ -18,6 +19,14 @@ nav_order: 1
 </details>
 ---
 
+**Attention:** *Thank you for your interest in MediaPipe Solutions.
+As of May 10, 2023, this solution was upgraded to a new MediaPipe
+Solution. For more information, see the
+[MediaPipe Solutions](https://developers.google.com/mediapipe/solutions/vision/face_detector)
+site.*
+
+----
+
 ## Overview
 
 MediaPipe Face Detection is an ultrafast face detection solution that comes with
@@ -26,7 +35,7 @@ MediaPipe Face Detection is an ultrafast face detection solution that comes with
 face detector tailored for mobile GPU inference. The detector's super-realtime
 performance enables it to be applied to any live viewfinder experience that
 requires an accurate facial region of interest as an input for other
-task-specific models, such as 3D facial keypoint or geometry estimation (e.g.,
+task-specific models, such as 3D facial keypoint estimation (e.g.,
 [MediaPipe Face Mesh](./face_mesh.md)), facial features or expression
 classification, and face region segmentation. BlazeFace uses a lightweight
 feature extraction network inspired by, but distinct from
@@ -37,7 +46,7 @@ improved tie resolution strategy alternative to non-maximum suppression. For
 more information about BlazeFace, please see the [Resources](#resources)
 section.
 
-![face_detection_android_gpu.gif](../images/mobile/face_detection_android_gpu.gif)
+![face_detection_android_gpu.gif](https://mediapipe.dev/images/mobile/face_detection_android_gpu.gif)
 
 ## Solution APIs
 
@@ -53,6 +62,25 @@ best for faces within 5 meters. For the full-range option, a sparse model is
 used for its improved inference speed. Please refer to the
 [model cards](./models.md#face_detection) for details. Default to `0` if not
 specified.
+
+Note: Not available for JavaScript (use "model" instead).
+
+#### model
+
+A string value to indicate which model should be used. Use "short" to
+select a short-range model that works best for faces within 2 meters from the
+camera, and "full" for a full-range model best for faces within 5 meters. For
+the full-range option, a sparse model is used for its improved inference speed.
+Please refer to the model cards for details. Default to empty string.
+
+Note: Valid only for JavaScript solution.
+
+#### selfie_mode
+
+A boolean value to indicate whether to flip the images/video frames
+horizontally or not. Default to `false`.
+
+Note: Valid only for JavaScript solution.
 
 #### min_detection_confidence
 
@@ -121,12 +149,10 @@ with mp_face_detection.FaceDetection(
       # If loading a video, use 'break' instead of 'continue'.
       continue
 
-    # Flip the image horizontally for a later selfie-view display, and convert
-    # the BGR image to RGB.
-    image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
     # To improve performance, optionally mark the image as not writeable to
     # pass by reference.
     image.flags.writeable = False
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     results = face_detection.process(image)
 
     # Draw the face detection annotations on the image.
@@ -135,7 +161,8 @@ with mp_face_detection.FaceDetection(
     if results.detections:
       for detection in results.detections:
         mp_drawing.draw_detection(image, detection)
-    cv2.imshow('MediaPipe Face Detection', image)
+    # Flip the image horizontally for a selfie-view display.
+    cv2.imshow('MediaPipe Face Detection', cv2.flip(image, 1))
     if cv2.waitKey(5) & 0xFF == 27:
       break
 cap.release()
@@ -147,9 +174,9 @@ Please first see general [introduction](../getting_started/javascript.md) on
 MediaPipe in JavaScript, then learn more in the companion [web demo](#resources)
 and the following usage example.
 
-Supported configuration options:
-
-*   [modelSelection](#model_selection)
+Supported face detection options:
+*   [selfieMode](#selfie_mode)
+*   [model](#model)
 *   [minDetectionConfidence](#min_detection_confidence)
 
 ```html
@@ -177,6 +204,7 @@ Supported configuration options:
 const videoElement = document.getElementsByClassName('input_video')[0];
 const canvasElement = document.getElementsByClassName('output_canvas')[0];
 const canvasCtx = canvasElement.getContext('2d');
+const drawingUtils = window;
 
 function onResults(results) {
   // Draw the overlays.
@@ -200,7 +228,7 @@ const faceDetection = new FaceDetection({locateFile: (file) => {
   return `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.0/${file}`;
 }});
 faceDetection.setOptions({
-  modelSelection: 0
+  model: 'short',
   minDetectionConfidence: 0.5
 });
 faceDetection.onResults(onResults);
@@ -214,6 +242,214 @@ const camera = new Camera(videoElement, {
 });
 camera.start();
 </script>
+```
+
+### Android Solution API
+
+Please first follow general
+[instructions](../getting_started/android_solutions.md) to add MediaPipe Gradle
+dependencies and try the Android Solution API in the companion
+[example Android Studio project](https://github.com/google/mediapipe/tree/master/mediapipe/examples/android/solutions/facedetection),
+and learn more in the usage example below.
+
+Supported configuration options:
+
+*   [staticImageMode](#static_image_mode)
+*   [modelSelection](#model_selection)
+
+#### Camera Input
+
+```java
+// For camera input and result rendering with OpenGL.
+FaceDetectionOptions faceDetectionOptions =
+    FaceDetectionOptions.builder()
+        .setStaticImageMode(false)
+        .setModelSelection(0).build();
+FaceDetection faceDetection = new FaceDetection(this, faceDetectionOptions);
+faceDetection.setErrorListener(
+    (message, e) -> Log.e(TAG, "MediaPipe Face Detection error:" + message));
+
+// Initializes a new CameraInput instance and connects it to MediaPipe Face Detection Solution.
+CameraInput cameraInput = new CameraInput(this);
+cameraInput.setNewFrameListener(
+    textureFrame -> faceDetection.send(textureFrame));
+
+// Initializes a new GlSurfaceView with a ResultGlRenderer<FaceDetectionResult> instance
+// that provides the interfaces to run user-defined OpenGL rendering code.
+// See mediapipe/examples/android/solutions/facedetection/src/main/java/com/google/mediapipe/examples/facedetection/FaceDetectionResultGlRenderer.java
+// as an example.
+SolutionGlSurfaceView<FaceDetectionResult> glSurfaceView =
+    new SolutionGlSurfaceView<>(
+        this, faceDetection.getGlContext(), faceDetection.getGlMajorVersion());
+glSurfaceView.setSolutionResultRenderer(new FaceDetectionResultGlRenderer());
+glSurfaceView.setRenderInputImage(true);
+faceDetection.setResultListener(
+    faceDetectionResult -> {
+      if (faceDetectionResult.multiFaceDetections().isEmpty()) {
+        return;
+      }
+      RelativeKeypoint noseTip =
+          faceDetectionResult
+              .multiFaceDetections()
+              .get(0)
+              .getLocationData()
+              .getRelativeKeypoints(FaceKeypoint.NOSE_TIP);
+      Log.i(
+          TAG,
+          String.format(
+              "MediaPipe Face Detection nose tip normalized coordinates (value range: [0, 1]): x=%f, y=%f",
+              noseTip.getX(), noseTip.getY()));
+      // Request GL rendering.
+      glSurfaceView.setRenderData(faceDetectionResult);
+      glSurfaceView.requestRender();
+    });
+
+// The runnable to start camera after the GLSurfaceView is attached.
+glSurfaceView.post(
+    () ->
+        cameraInput.start(
+            this,
+            faceDetection.getGlContext(),
+            CameraInput.CameraFacing.FRONT,
+            glSurfaceView.getWidth(),
+            glSurfaceView.getHeight()));
+```
+
+#### Image Input
+
+```java
+// For reading images from gallery and drawing the output in an ImageView.
+FaceDetectionOptions faceDetectionOptions =
+    FaceDetectionOptions.builder()
+        .setStaticImageMode(true)
+        .setModelSelection(0).build();
+FaceDetection faceDetection = new FaceDetection(this, faceDetectionOptions);
+
+// Connects MediaPipe Face Detection Solution to the user-defined ImageView
+// instance that allows users to have the custom drawing of the output landmarks
+// on it. See mediapipe/examples/android/solutions/facedetection/src/main/java/com/google/mediapipe/examples/facedetection/FaceDetectionResultImageView.java
+// as an example.
+FaceDetectionResultImageView imageView = new FaceDetectionResultImageView(this);
+faceDetection.setResultListener(
+    faceDetectionResult -> {
+      if (faceDetectionResult.multiFaceDetections().isEmpty()) {
+        return;
+      }
+      int width = faceDetectionResult.inputBitmap().getWidth();
+      int height = faceDetectionResult.inputBitmap().getHeight();
+      RelativeKeypoint noseTip =
+          faceDetectionResult
+              .multiFaceDetections()
+              .get(0)
+              .getLocationData()
+              .getRelativeKeypoints(FaceKeypoint.NOSE_TIP);
+      Log.i(
+          TAG,
+          String.format(
+              "MediaPipe Face Detection nose tip coordinates (pixel values): x=%f, y=%f",
+              noseTip.getX() * width, noseTip.getY() * height));
+      // Request canvas drawing.
+      imageView.setFaceDetectionResult(faceDetectionResult);
+      runOnUiThread(() -> imageView.update());
+    });
+faceDetection.setErrorListener(
+    (message, e) -> Log.e(TAG, "MediaPipe Face Detection error:" + message));
+
+// ActivityResultLauncher to get an image from the gallery as Bitmap.
+ActivityResultLauncher<Intent> imageGetter =
+    registerForActivityResult(
+        new ActivityResultContracts.StartActivityForResult(),
+        result -> {
+          Intent resultIntent = result.getData();
+          if (resultIntent != null && result.getResultCode() == RESULT_OK) {
+            Bitmap bitmap = null;
+            try {
+              bitmap =
+                  MediaStore.Images.Media.getBitmap(
+                      this.getContentResolver(), resultIntent.getData());
+              // Please also rotate the Bitmap based on its orientation.
+            } catch (IOException e) {
+              Log.e(TAG, "Bitmap reading error:" + e);
+            }
+            if (bitmap != null) {
+              faceDetection.send(bitmap);
+            }
+          }
+        });
+Intent pickImageIntent = new Intent(Intent.ACTION_PICK);
+pickImageIntent.setDataAndType(MediaStore.Images.Media.INTERNAL_CONTENT_URI, "image/*");
+imageGetter.launch(pickImageIntent);
+```
+
+#### Video Input
+
+```java
+// For video input and result rendering with OpenGL.
+FaceDetectionOptions faceDetectionOptions =
+    FaceDetectionOptions.builder()
+        .setStaticImageMode(false)
+        .setModelSelection(0).build();
+FaceDetection faceDetection = new FaceDetection(this, faceDetectionOptions);
+faceDetection.setErrorListener(
+    (message, e) -> Log.e(TAG, "MediaPipe Face Detection error:" + message));
+
+// Initializes a new VideoInput instance and connects it to MediaPipe Face Detection Solution.
+VideoInput videoInput = new VideoInput(this);
+videoInput.setNewFrameListener(
+    textureFrame -> faceDetection.send(textureFrame));
+
+// Initializes a new GlSurfaceView with a ResultGlRenderer<FaceDetectionResult> instance
+// that provides the interfaces to run user-defined OpenGL rendering code.
+// See mediapipe/examples/android/solutions/facedetection/src/main/java/com/google/mediapipe/examples/facedetection/FaceDetectionResultGlRenderer.java
+// as an example.
+SolutionGlSurfaceView<FaceDetectionResult> glSurfaceView =
+    new SolutionGlSurfaceView<>(
+        this, faceDetection.getGlContext(), faceDetection.getGlMajorVersion());
+glSurfaceView.setSolutionResultRenderer(new FaceDetectionResultGlRenderer());
+glSurfaceView.setRenderInputImage(true);
+
+faceDetection.setResultListener(
+    faceDetectionResult -> {
+      if (faceDetectionResult.multiFaceDetections().isEmpty()) {
+        return;
+      }
+      RelativeKeypoint noseTip =
+          faceDetectionResult
+              .multiFaceDetections()
+              .get(0)
+              .getLocationData()
+              .getRelativeKeypoints(FaceKeypoint.NOSE_TIP);
+      Log.i(
+          TAG,
+          String.format(
+              "MediaPipe Face Detection nose tip normalized coordinates (value range: [0, 1]): x=%f, y=%f",
+              noseTip.getX(), noseTip.getY()));
+      // Request GL rendering.
+      glSurfaceView.setRenderData(faceDetectionResult);
+      glSurfaceView.requestRender();
+    });
+
+ActivityResultLauncher<Intent> videoGetter =
+    registerForActivityResult(
+        new ActivityResultContracts.StartActivityForResult(),
+        result -> {
+          Intent resultIntent = result.getData();
+          if (resultIntent != null) {
+            if (result.getResultCode() == RESULT_OK) {
+              glSurfaceView.post(
+                  () ->
+                      videoInput.start(
+                          this,
+                          resultIntent.getData(),
+                          faceDetection.getGlContext(),
+                          glSurfaceView.getWidth(),
+                          glSurfaceView.getHeight()));
+            }
+          }
+        });
+Intent pickVideoIntent = new Intent(Intent.ACTION_PICK);
+pickVideoIntent.setDataAndType(MediaStore.Video.Media.INTERNAL_CONTENT_URI, "video/*");
+videoGetter.launch(pickVideoIntent);
 ```
 
 ## Example Apps

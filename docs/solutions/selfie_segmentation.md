@@ -1,7 +1,8 @@
 ---
-layout: default
+layout: forward
+target: https://developers.google.com/mediapipe/solutions/vision/image_segmenter/
 title: Selfie Segmentation
-parent: Solutions
+parent: MediaPipe Legacy Solutions
 nav_order: 7
 ---
 
@@ -18,11 +19,19 @@ nav_order: 7
 </details>
 ---
 
+**Attention:** *Thank you for your interest in MediaPipe Solutions.
+As of April 4, 2023, this solution was upgraded to a new MediaPipe
+Solution. For more information, see the
+[MediaPipe Solutions](https://developers.google.com/mediapipe/solutions/vision/image_segmenter/)
+site.*
+
+----
+
 ## Overview
 
 *Fig 1. Example of MediaPipe Selfie Segmentation.* |
 :------------------------------------------------: |
-<video autoplay muted loop preload style="height: auto; width: 480px"><source src="../images/selfie_segmentation_web.mp4" type="video/mp4"></video> |
+<video autoplay muted loop preload style="height: auto; width: 480px"><source src="https://mediapipe.dev/images/selfie_segmentation_web.mp4" type="video/mp4"></video> |
 
 MediaPipe Selfie Segmentation segments the prominent humans in the scene. It can
 run in real-time on both smartphones and laptops. The intended use cases include
@@ -96,6 +105,7 @@ Supported configuration options:
 ```python
 import cv2
 import mediapipe as mp
+import numpy as np
 mp_drawing = mp.solutions.drawing_utils
 mp_selfie_segmentation = mp.solutions.selfie_segmentation
 
@@ -261,7 +271,7 @@ to visualize its associated subgraphs, please see
     [(or download prebuilt ARM64 APK)](https://drive.google.com/file/d/1DoeyGzMmWUsjfVgZfGGecrn7GKzYcEAo/view?usp=sharing)
     [`mediapipe/examples/android/src/java/com/google/mediapipe/apps/selfiesegmentationgpu:selfiesegmentationgpu`](https://github.com/google/mediapipe/tree/master/mediapipe/examples/android/src/java/com/google/mediapipe/apps/selfiesegmentationgpu/BUILD)
 *   iOS target:
-    [`mediapipe/examples/ios/selfiesegmentationgpu:SelfieSegmentationGpuApp`](http:/mediapipe/examples/ios/selfiesegmentationgpu/BUILD)
+    [`mediapipe/examples/ios/selfiesegmentationgpu:SelfieSegmentationGpuApp`](https://github.com/google/mediapipe/tree/master/mediapipe/examples/ios/selfiesegmentationgpu/BUILD)
 
 ### Desktop
 

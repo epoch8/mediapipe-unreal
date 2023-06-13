@@ -39,10 +39,12 @@ using ::testing::Pair;
 using ::testing::Value;
 namespace {
 
+constexpr char kDisallowTag[] = "DISALLOW";
+
 // Returns the timestamp values for a vector of Packets.
 // TODO: puth this kind of test util in a common place.
-std::vector<int64> TimestampValues(const std::vector<Packet>& packets) {
-  std::vector<int64> result;
+std::vector<int64_t> TimestampValues(const std::vector<Packet>& packets) {
+  std::vector<int64_t> result;
   for (const Packet& packet : packets) {
     result.push_back(packet.Timestamp().Value());
   }
@@ -369,7 +371,7 @@ TEST(PreviousLoopbackCalculator, EmptyLoopForever) {
   for (int main_ts = 0; main_ts < 50; ++main_ts) {
     send_packet("in", main_ts);
     MP_EXPECT_OK(graph_.WaitUntilIdle());
-    std::vector<int64> ts_values = TimestampValues(outputs);
+    std::vector<int64_t> ts_values = TimestampValues(outputs);
     EXPECT_EQ(ts_values.size(), main_ts + 1);
     for (int j = 0; j < main_ts + 1; ++j) {
       EXPECT_EQ(ts_values[j], j);
@@ -702,14 +704,14 @@ class DroppingGateCalculator : public CalculatorBase {
  public:
   static absl::Status GetContract(CalculatorContract* cc) {
     cc->Inputs().Index(0).SetAny();
-    cc->Inputs().Tag("DISALLOW").Set<bool>();
+    cc->Inputs().Tag(kDisallowTag).Set<bool>();
     cc->Outputs().Index(0).SetSameAs(&cc->Inputs().Index(0));
     return absl::OkStatus();
   }
 
   absl::Status Process(CalculatorContext* cc) final {
     if (!cc->Inputs().Index(0).IsEmpty() &&
-        !cc->Inputs().Tag("DISALLOW").Get<bool>()) {
+        !cc->Inputs().Tag(kDisallowTag).Get<bool>()) {
       cc->Outputs().Index(0).AddPacket(cc->Inputs().Index(0).Value());
     }
     return absl::OkStatus();

@@ -16,9 +16,6 @@
 
 namespace mediapipe {
 
-const GraphService<TestServiceObject> kTestService("test_service");
-const GraphService<int> kAnotherService("another_service");
-
 absl::Status TestServiceCalculator::GetContract(CalculatorContract* cc) {
   cc->Inputs().Index(0).Set<int>();
   cc->Outputs().Index(0).SetSameAs(&cc->Inputs().Index(0));

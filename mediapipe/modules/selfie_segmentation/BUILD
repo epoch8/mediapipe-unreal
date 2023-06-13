@@ -16,6 +16,10 @@ load(
     "//mediapipe/framework/tool:mediapipe_graph.bzl",
     "mediapipe_simple_subgraph",
 )
+load(
+    "//mediapipe/framework/tool:mediapipe_files.bzl",
+    "mediapipe_files",
+)
 
 licenses(["notice"])
 
@@ -65,7 +69,33 @@ mediapipe_simple_subgraph(
     ],
 )
 
-exports_files(
+mediapipe_simple_subgraph(
+    name = "selfie_segmentation_cpu_image",
+    graph = "selfie_segmentation_cpu_image.pbtxt",
+    register_as = "SelfieSegmentationCpuImage",
+    deps = [
+        ":selfie_segmentation_cpu",
+        "//mediapipe/calculators/core:flow_limiter_calculator",
+        "//mediapipe/calculators/image:image_transformation_calculator",
+        "//mediapipe/calculators/util:from_image_calculator",
+        "//mediapipe/calculators/util:to_image_calculator",
+    ],
+)
+
+mediapipe_simple_subgraph(
+    name = "selfie_segmentation_gpu_image",
+    graph = "selfie_segmentation_gpu_image.pbtxt",
+    register_as = "SelfieSegmentationGpuImage",
+    deps = [
+        ":selfie_segmentation_gpu",
+        "//mediapipe/calculators/core:flow_limiter_calculator",
+        "//mediapipe/calculators/image:image_transformation_calculator",
+        "//mediapipe/calculators/util:from_image_calculator",
+        "//mediapipe/calculators/util:to_image_calculator",
+    ],
+)
+
+mediapipe_files(
     srcs = [
         "selfie_segmentation.tflite",
         "selfie_segmentation_landscape.tflite",

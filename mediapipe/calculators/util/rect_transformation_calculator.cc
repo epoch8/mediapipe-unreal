@@ -28,6 +28,9 @@ constexpr char kRectTag[] = "RECT";
 constexpr char kRectsTag[] = "RECTS";
 constexpr char kImageSizeTag[] = "IMAGE_SIZE";
 
+using ::mediapipe::NormalizedRect;
+using ::mediapipe::Rect;
+
 // Wraps around an angle in radians to within -M_PI and M_PI.
 inline float NormalizeRadians(float angle) {
   return angle - 2 * M_PI * std::floor((angle - (-M_PI)) / (2 * M_PI));
@@ -36,7 +39,7 @@ inline float NormalizeRadians(float angle) {
 }  // namespace
 
 // Performs geometric transformation to the input Rect or NormalizedRect,
-// correpsonding to input stream RECT or NORM_RECT respectively. When the input
+// corresponding to input stream RECT or NORM_RECT respectively. When the input
 // is NORM_RECT, an addition input stream IMAGE_SIZE is required, which is a
 // std::pair<int, int> representing the image width and height.
 //

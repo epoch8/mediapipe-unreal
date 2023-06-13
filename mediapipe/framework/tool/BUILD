@@ -28,6 +28,7 @@ package(default_visibility = ["//visibility:private"])
 
 exports_files([
     "simple_subgraph_template.cc",
+    "options_lib_template.cc",
 ])
 
 bzl_library(
@@ -40,7 +41,9 @@ bzl_library(
         ":build_defs_bzl",
         "//mediapipe/framework:encode_binary_proto",
         "//mediapipe/framework:transitive_protos_bzl",
+        "//mediapipe/framework/deps:descriptor_set_bzl",
         "//mediapipe/framework/deps:expand_template_bzl",
+        "@org_tensorflow//tensorflow/lite/core/shims:cc_library_with_tflite_bzl",
     ],
 )
 
@@ -50,6 +53,8 @@ bzl_library(
         "build_defs.bzl",
     ],
     visibility = [
+        "//mediapipe/app/pursuit/wasm:__subpackages__",
+        "//mediapipe/app/xeno/catalog:__subpackages__",
         "//mediapipe/framework:__subpackages__",
     ],
 )
@@ -71,12 +76,23 @@ cc_library(
 mediapipe_proto_library(
     name = "calculator_graph_template_proto",
     srcs = ["calculator_graph_template.proto"],
-    def_py_proto = False,
+    def_options_lib = False,
     visibility = ["//visibility:public"],
     deps = [
         "//mediapipe/framework:calculator_options_proto",
         "//mediapipe/framework:calculator_proto",
         "//mediapipe/framework/deps:proto_descriptor_proto",
+    ],
+)
+
+mediapipe_proto_library(
+    name = "packet_generator_wrapper_calculator_proto",
+    srcs = ["packet_generator_wrapper_calculator.proto"],
+    def_py_proto = False,
+    visibility = ["//mediapipe/framework:__subpackages__"],
+    deps = [
+        "//mediapipe/framework:calculator_options_proto",
+        "//mediapipe/framework:packet_generator_proto",
     ],
 )
 
@@ -103,13 +119,13 @@ cc_library(
     name = "fill_packet_set",
     srcs = ["fill_packet_set.cc"],
     hdrs = ["fill_packet_set.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = ["//mediapipe/framework:__subpackages__"],
     deps = [
+        ":status_util",
         "//mediapipe/framework:packet_set",
         "//mediapipe/framework:packet_type",
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/port:statusor",
-        "//mediapipe/framework/tool:status_util",
         "@com_google_absl//absl/memory",
     ],
 )
@@ -118,7 +134,7 @@ cc_library(
     name = "name_util",
     srcs = ["name_util.cc"],
     hdrs = ["name_util.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = ["//visibility:public"],
     deps = [
         ":validate_name",
         "//mediapipe/framework:calculator_cc_proto",
@@ -133,7 +149,7 @@ cc_library(
     name = "executor_util",
     srcs = ["executor_util.cc"],
     hdrs = ["executor_util.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = ["//visibility:public"],
     deps = [
         "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework:mediapipe_options_cc_proto",
@@ -145,10 +161,8 @@ cc_library(
 cc_test(
     name = "executor_util_test",
     srcs = ["executor_util_test.cc"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
     deps = [
         ":executor_util",
-        "//mediapipe/framework/deps:message_matchers",
         "//mediapipe/framework/port:gtest_main",
         "//mediapipe/framework/port:parse_text_proto",
     ],
@@ -157,12 +171,75 @@ cc_test(
 cc_library(
     name = "options_map",
     hdrs = ["options_map.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = ["//mediapipe:__subpackages__"],
     deps = [
+        ":type_util",
         "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework/port:any_proto",
         "//mediapipe/framework/port:status",
-        "//mediapipe/framework/tool:type_util",
+    ],
+)
+
+cc_test(
+    name = "options_map_test",
+    srcs = ["options_map_test.cc"],
+    deps = [
+        ":options_map",
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/port:gtest_main",
+        "//mediapipe/framework/port:parse_text_proto",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/framework/testdata:night_light_calculator_cc_proto",
+        "//mediapipe/framework/testdata:night_light_calculator_options_lib",
+    ],
+)
+
+mediapipe_proto_library(
+    name = "field_data_proto",
+    srcs = ["field_data.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["@com_google_protobuf//:any_proto"],
+)
+
+cc_library(
+    name = "options_field_util",
+    srcs = ["options_field_util.cc"],
+    hdrs = ["options_field_util.h"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":field_data_cc_proto",
+        ":name_util",
+        ":options_registry",
+        ":proto_util_lite",
+        ":type_util",
+        "//mediapipe/framework:calculator_cc_proto",
+        "//mediapipe/framework:packet",
+        "//mediapipe/framework:packet_type",
+        "//mediapipe/framework/port:advanced_proto",
+        "//mediapipe/framework/port:any_proto",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/framework/port:status",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "options_syntax_util",
+    srcs = ["options_syntax_util.cc"],
+    hdrs = ["options_syntax_util.h"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":name_util",
+        ":options_field_util",
+        ":options_registry",
+        "//mediapipe/framework:calculator_cc_proto",
+        "//mediapipe/framework:packet",
+        "//mediapipe/framework:packet_type",
+        "//mediapipe/framework/port:advanced_proto",
+        "//mediapipe/framework/port:any_proto",
+        "//mediapipe/framework/port:status",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -170,11 +247,16 @@ cc_library(
     name = "options_util",
     srcs = ["options_util.cc"],
     hdrs = ["options_util.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = ["//visibility:public"],
     deps = [
+        ":name_util",
+        ":options_field_util",
         ":options_map",
+        ":options_registry",
+        ":options_syntax_util",
         ":proto_util_lite",
         "//mediapipe/framework:calculator_cc_proto",
+        "//mediapipe/framework:calculator_context",
         "//mediapipe/framework:collection",
         "//mediapipe/framework:input_stream_shard",
         "//mediapipe/framework:output_side_packet",
@@ -185,21 +267,57 @@ cc_library(
         "//mediapipe/framework/port:advanced_proto",
         "//mediapipe/framework/port:any_proto",
         "//mediapipe/framework/port:status",
-        "//mediapipe/framework/tool:type_util",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_binary(
+    name = "message_type_util",
+    srcs = ["message_type_util.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//mediapipe/framework/port:advanced_proto",
+        "//mediapipe/framework/port:file_helpers",
+        "//mediapipe/framework/port:logging",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "options_registry",
+    srcs = ["options_registry.cc"],
+    hdrs = ["options_registry.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":field_data_cc_proto",
+        ":proto_util_lite",
+        "//mediapipe/framework/deps:registration",
+        "//mediapipe/framework/port:advanced_proto",
+        "//mediapipe/framework/port:logging",
+        "//mediapipe/framework/port:ret_check",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 
 mediapipe_cc_test(
     name = "options_util_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["options_util_test.cc"],
+    # A non-empty "data" param is needed to build the "_test_wasm" target.
     data = [":node_chain_subgraph.proto"],
     requires_full_emulation = False,
     deps = [
+        ":node_chain_subgraph_cc_proto",
+        ":node_chain_subgraph_options_lib",
+        ":options_field_util",
+        ":options_registry",
+        ":options_syntax_util",
         ":options_util",
         "//mediapipe/calculators/core:flow_limiter_calculator",
-        "//mediapipe/calculators/core:flow_limiter_calculator_cc_proto",
         "//mediapipe/framework:basic_types_registration",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework:calculator_runner",
@@ -208,8 +326,24 @@ mediapipe_cc_test(
         "//mediapipe/framework/port:parse_text_proto",
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/testdata:night_light_calculator_cc_proto",
+        "//mediapipe/framework/testdata:night_light_calculator_options_lib",
         "//mediapipe/util:header_util",
+        "@com_google_absl//absl/strings",
     ],
+)
+
+cc_library(
+    name = "packet_generator_wrapper_calculator",
+    srcs = ["packet_generator_wrapper_calculator.cc"],
+    visibility = ["//mediapipe/framework:__subpackages__"],
+    deps = [
+        ":packet_generator_wrapper_calculator_cc_proto",
+        "//mediapipe/framework:calculator_base",
+        "//mediapipe/framework:calculator_registry",
+        "//mediapipe/framework:output_side_packet",
+        "//mediapipe/framework:packet_generator",
+    ],
+    alwayslink = 1,
 )
 
 cc_library(
@@ -218,12 +352,14 @@ cc_library(
     hdrs = ["proto_util_lite.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":field_data_cc_proto",
         "//mediapipe/framework:type_map",
         "//mediapipe/framework/port:advanced_proto_lite",
         "//mediapipe/framework/port:integral_types",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
+        "//mediapipe/framework/port:statusor",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -299,9 +435,9 @@ cc_library(
     srcs = ["source.cc"],
     visibility = ["//visibility:public"],
     deps = [
+        ":source_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/port:status",
-        "//mediapipe/framework/tool:source_cc_proto",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
     ],
@@ -334,6 +470,7 @@ cc_library(
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/port:statusor",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
     ],
@@ -361,14 +498,13 @@ cc_library(
     hdrs = ["template_expander.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":calculator_graph_template_cc_proto",
         ":proto_util_lite",
         "//mediapipe/framework:calculator_cc_proto",
-        "//mediapipe/framework/deps:proto_descriptor_cc_proto",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:numbers",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
-        "//mediapipe/framework/tool:calculator_graph_template_cc_proto",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -383,7 +519,9 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        ":calculator_graph_template_cc_proto",
         ":proto_util_lite",
+        "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework/deps:proto_descriptor_cc_proto",
         "//mediapipe/framework/port:advanced_proto",
         "//mediapipe/framework/port:integral_types",
@@ -391,7 +529,6 @@ cc_library(
         "//mediapipe/framework/port:map_util",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
-        "//mediapipe/framework/tool:calculator_graph_template_cc_proto",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -401,9 +538,11 @@ cc_library(
 cc_library(
     name = "type_util",
     hdrs = ["type_util.h"],
-    visibility = ["//mediapipe/framework:mediapipe_internal"],
+    visibility = ["//visibility:public"],
     deps = [
+        "//mediapipe/framework:demangle",
         "//mediapipe/framework:port",
+        "@com_google_absl//absl/base:core_headers",
     ],
 )
 
@@ -498,7 +637,6 @@ cc_test(
     deps = [
         ":validate_name",
         "//mediapipe/framework:calculator_cc_proto",
-        "//mediapipe/framework/deps:message_matchers",
         "//mediapipe/framework/port:gtest_main",
         "@com_google_absl//absl/strings",
     ],
@@ -536,8 +674,8 @@ cc_library(
     hdrs = ["simulation_clock_executor.h"],
     visibility = ["//visibility:public"],
     deps = [
+        ":simulation_clock",
         "//mediapipe/framework:thread_pool_executor",
-        "//mediapipe/framework/tool:simulation_clock",
     ],
 )
 
@@ -609,18 +747,17 @@ cc_test(
     srcs = ["subgraph_expansion_test.cc"],
     deps = [
         ":node_chain_subgraph_cc_proto",
+        ":node_chain_subgraph_options_lib",
         ":subgraph_expansion",
+        "//mediapipe/calculators/core:pass_through_calculator",
         "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework:graph_service_manager",
-        "//mediapipe/framework:mediapipe_options_cc_proto",
         "//mediapipe/framework:packet",
-        "//mediapipe/framework:packet_generator_cc_proto",
         "//mediapipe/framework:packet_set",
         "//mediapipe/framework:packet_type",
         "//mediapipe/framework:status_handler",
         "//mediapipe/framework:subgraph",
-        "//mediapipe/framework/deps:message_matchers",
         "//mediapipe/framework/port:gtest_main",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:parse_text_proto",
@@ -648,11 +785,13 @@ cc_library(
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
         "@stblib//:stb_image",
         "@stblib//:stb_image_write",
     ],
@@ -665,10 +804,10 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":name_util",
+        ":switch_container_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
-        "//mediapipe/framework/tool:switch_container_cc_proto",
     ],
 )
 
@@ -681,6 +820,7 @@ cc_library(
     deps = [
         ":container_util",
         ":options_util",
+        ":switch_container_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework:collection_item_id",
         "//mediapipe/framework/deps:mathutil",
@@ -690,10 +830,22 @@ cc_library(
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/stream_handler:immediate_input_stream_handler",
-        "//mediapipe/framework/tool:switch_container_cc_proto",
         "@com_google_absl//absl/strings",
     ],
     alwayslink = 1,
+)
+
+mediapipe_cc_test(
+    name = "switch_demux_calculator_test",
+    srcs = ["switch_demux_calculator_test.cc"],
+    deps = [
+        ":container_util",
+        ":switch_demux_calculator",
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework/port:gtest_main",
+        "//mediapipe/framework/port:logging",
+        "@com_google_absl//absl/strings",
+    ],
 )
 
 cc_library(
@@ -704,22 +856,38 @@ cc_library(
     ],
     deps = [
         ":container_util",
-        ":options_util",
+        ":switch_container_cc_proto",
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework:collection_item_id",
         "//mediapipe/framework:input_stream_shard",
         "//mediapipe/framework:output_stream_shard",
-        "//mediapipe/framework/deps:mathutil",
-        "//mediapipe/framework/formats:video_stream_header",
         "//mediapipe/framework/port:integral_types",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/stream_handler:immediate_input_stream_handler",
-        "//mediapipe/framework/tool:switch_container_cc_proto",
-        "@com_google_absl//absl/strings",
     ],
     alwayslink = 1,
+)
+
+mediapipe_cc_test(
+    name = "switch_mux_calculator_test",
+    srcs = ["switch_mux_calculator_test.cc"],
+    deps = [
+        ":container_util",
+        ":switch_mux_calculator",
+        "//mediapipe/calculators/core:pass_through_calculator",
+        "//mediapipe/framework:calculator_cc_proto",
+        "//mediapipe/framework:calculator_framework",
+        "//mediapipe/framework:subgraph",
+        "//mediapipe/framework/port:gtest_main",
+        "//mediapipe/framework/port:logging",
+        "//mediapipe/framework/port:parse_text_proto",
+        "//mediapipe/framework/port:ret_check",
+        "//mediapipe/framework/port:status",
+        "//mediapipe/framework/stream_handler:immediate_input_stream_handler",
+        "@com_google_absl//absl/strings",
+    ],
 )
 
 mediapipe_proto_library(
@@ -740,17 +908,19 @@ cc_library(
         ":container_util",
         ":name_util",
         ":subgraph_expansion",
+        ":switch_container_cc_proto",
         ":switch_demux_calculator",
         ":switch_mux_calculator",
+        "//mediapipe/calculators/core:packet_sequencer_calculator",
         "//mediapipe/framework:calculator_cc_proto",
         "//mediapipe/framework:calculator_framework",
-        "//mediapipe/framework:mediapipe_options_cc_proto",
-        "//mediapipe/framework:stream_handler_cc_proto",
+        "//mediapipe/framework:calculator_options_cc_proto",
         "//mediapipe/framework:subgraph",
+        "//mediapipe/framework/deps:registration",
+        "//mediapipe/framework/port:core_proto",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
-        "//mediapipe/framework/stream_handler:sync_set_input_stream_handler_cc_proto",
-        "//mediapipe/framework/tool:switch_container_cc_proto",
+        "@com_google_absl//absl/strings",
     ],
     alwayslink = 1,
 )
@@ -769,13 +939,13 @@ cc_test(
         "//mediapipe/framework:calculator_framework",
         "//mediapipe/framework:subgraph",
         "//mediapipe/framework:test_calculators",
-        "//mediapipe/framework/deps:message_matchers",
         "//mediapipe/framework/port:gtest_main",
         "//mediapipe/framework/port:logging",
         "//mediapipe/framework/port:parse_text_proto",
         "//mediapipe/framework/port:ret_check",
         "//mediapipe/framework/port:status",
         "//mediapipe/framework/stream_handler:immediate_input_stream_handler",
+        "@com_google_absl//absl/strings",
     ],
 )
 

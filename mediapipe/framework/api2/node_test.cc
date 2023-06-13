@@ -19,8 +19,6 @@ namespace mediapipe {
 namespace api2 {
 namespace test {
 
-using testing::ElementsAre;
-
 // Returns the packet values for a vector of Packets.
 template <typename T>
 std::vector<T> PacketValues(const std::vector<mediapipe::Packet>& packets) {
@@ -564,6 +562,19 @@ TEST(NodeTest, ConsumeInputs) {
   MP_EXPECT_OK(graph.CloseAllPacketSources());
   MP_EXPECT_OK(graph.WaitUntilDone());
 }
+
+// Just to test that single-port contracts work.
+struct LogSinkNode : public Node {
+  static constexpr Input<int> kIn{"IN"};
+
+  MEDIAPIPE_NODE_CONTRACT(kIn);
+
+  absl::Status Process(CalculatorContext* cc) override {
+    LOG(INFO) << "LogSinkNode received: " << kIn(cc).Get();
+    return {};
+  }
+};
+MEDIAPIPE_REGISTER_NODE(LogSinkNode);
 
 }  // namespace test
 }  // namespace api2

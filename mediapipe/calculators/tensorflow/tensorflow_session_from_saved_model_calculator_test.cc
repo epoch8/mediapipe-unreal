@@ -35,6 +35,9 @@ namespace {
 
 namespace tf = ::tensorflow;
 
+constexpr char kStringSavedModelPathTag[] = "STRING_SAVED_MODEL_PATH";
+constexpr char kSessionTag[] = "SESSION";
+
 std::string GetSavedModelDir() {
   std::string out_path =
       file::JoinPath("./", "mediapipe/calculators/tensorflow/testdata/",
@@ -46,7 +49,7 @@ std::string GetSavedModelDir() {
 tf::Tensor TensorMatrix1x3(const int v1, const int v2, const int v3) {
   tf::Tensor tensor(tf::DT_INT32,
                     tf::TensorShape(std::vector<tf::int64>({1, 3})));
-  auto matrix = tensor.matrix<int32>();
+  auto matrix = tensor.matrix<int32_t>();
   matrix(0, 0) = v1;
   matrix(0, 1) = v2;
   matrix(0, 2) = v3;
@@ -79,7 +82,7 @@ TEST_F(TensorFlowSessionFromSavedModelCalculatorTest,
                                            options_->DebugString()));
   MP_ASSERT_OK(runner.Run());
   const TensorFlowSession& session =
-      runner.OutputSidePackets().Tag("SESSION").Get<TensorFlowSession>();
+      runner.OutputSidePackets().Tag(kSessionTag).Get<TensorFlowSession>();
   // Session must be set.
   ASSERT_NE(session.session, nullptr);
 
@@ -119,11 +122,11 @@ TEST_F(TensorFlowSessionFromSavedModelCalculatorTest,
           }
         })",
                                            options_->DebugString()));
-  runner.MutableSidePackets()->Tag("STRING_SAVED_MODEL_PATH") =
+  runner.MutableSidePackets()->Tag(kStringSavedModelPathTag) =
       MakePacket<std::string>(GetSavedModelDir());
   MP_ASSERT_OK(runner.Run());
   const TensorFlowSession& session =
-      runner.OutputSidePackets().Tag("SESSION").Get<TensorFlowSession>();
+      runner.OutputSidePackets().Tag(kSessionTag).Get<TensorFlowSession>();
   // Session must be set.
   ASSERT_NE(session.session, nullptr);
 }
@@ -201,7 +204,7 @@ TEST_F(TensorFlowSessionFromSavedModelCalculatorTest,
                                            options_->DebugString()));
   MP_ASSERT_OK(runner.Run());
   const TensorFlowSession& session =
-      runner.OutputSidePackets().Tag("SESSION").Get<TensorFlowSession>();
+      runner.OutputSidePackets().Tag(kSessionTag).Get<TensorFlowSession>();
   // Session must be set.
   ASSERT_NE(session.session, nullptr);
 }
@@ -224,11 +227,11 @@ TEST_F(TensorFlowSessionFromSavedModelCalculatorTest,
                                            options_->DebugString()));
   MP_ASSERT_OK(runner.Run());
   const TensorFlowSession& session =
-      runner.OutputSidePackets().Tag("SESSION").Get<TensorFlowSession>();
+      runner.OutputSidePackets().Tag(kSessionTag).Get<TensorFlowSession>();
   // Session must be set.
   ASSERT_NE(session.session, nullptr);
   std::vector<tensorflow::DeviceAttributes> devices;
-  ASSERT_EQ(session.session->ListDevices(&devices), tensorflow::Status::OK());
+  ASSERT_EQ(session.session->ListDevices(&devices), tensorflow::OkStatus());
   EXPECT_THAT(devices.size(), 10);
 }
 
