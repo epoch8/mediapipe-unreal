@@ -753,6 +753,11 @@ inline TypeId Packet::GetTypeId() const {
   return holder_->GetTypeId();
 }
 
+inline size_t Packet::GetTypeIdUMP() const {
+  CHECK(holder_);
+  return holder_->GetTypeIdUMP();
+}
+
 inline const void * const Packet::GetRaw() const { return holder_->GetRaw(); } // UMP
 
 template <typename T>
